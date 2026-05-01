@@ -1,0 +1,94 @@
+---
+name: han-review
+description: Enforce CEO-level preview quality for Mintlify docs with pixel-perfect UI and UX standards. Use when reviewing customer previews, redesigning docs homepages, responding to Han feedback, or when the user asks for a polished, production-ready Mintlify experience.
+---
+
+# Han Review
+
+High-bar QA and design workflow for Mintlify previews that must feel production-ready and close to the customer's existing experience.
+
+## Core Principle
+
+Optimize for trust and familiarity:
+
+1. Match the customer's current information architecture and UX patterns where possible.
+2. Prefer Mintlify-native components over custom CSS.
+3. Treat every placeholder, rough edge, and mismatch as a bug to fix.
+
+## When To Apply This Skill
+
+Apply automatically when the request includes terms like:
+
+- Han review
+- preview quality
+- pixel perfect
+- polish this page
+- make it match customer site
+- remove placeholder text
+
+## Non-Negotiable Standards
+
+### 1) Pixel-Perfect UI
+
+- No placeholder copy in navigation, search, cards, buttons, or CTAs.
+- Typography, spacing, alignment, and icon sizing must be visually consistent.
+- Homepage sections should mirror the customer's hierarchy and scannability.
+- Light and dark modes both look intentional (no broken contrast states).
+
+### 2) Pixel-Perfect UX
+
+- Primary user paths are obvious (quick start, reference, guides).
+- Labels are customer-facing and concrete, never generic filler.
+- Interactions feel complete: hover, focus, active, and mobile behavior are coherent.
+
+### 3) Mintlify-First Implementation
+
+Default to Mintlify components before custom styling:
+
+- Navigation + page structure from `docs.json`
+- `CardGroup` / `Card` for section navigation
+- `Steps` / `Step` for onboarding flows
+- `Note`, `Tip`, `Warning`, `Accordion`, and tabs where appropriate
+- Built-in page conventions before hand-rolled wrappers
+
+Only add custom CSS when required to match customer branding or layout. Keep it minimal and scoped.
+
+## Review Workflow
+
+1. **Baseline alignment**
+   - Compare preview with the customer's current docs/site.
+   - Preserve familiar IA labels and nav grouping (Home, Guides, APIs, Reference, Learn, etc.).
+
+2. **Component-first pass**
+   - Replace custom constructs with Mintlify components where possible.
+   - Keep custom classes only where components cannot achieve required fidelity.
+
+3. **Polish pass**
+   - Remove placeholders and ambiguous text.
+   - Tighten headings, CTAs, spacing rhythm, and card descriptions.
+   - Normalize fonts to match customer style as closely as possible using supported theme options first.
+
+4. **Responsive + theme pass**
+   - Validate mobile and desktop layouts.
+   - Validate dark and light themes.
+   - Ensure hover/focus states remain readable and intentional.
+
+5. **Final acceptance pass**
+   - Confirm the page feels launch-ready, not demo-ready.
+   - If any section feels "template-ish", revise before finishing.
+
+## Decision Rules
+
+- If a Mintlify component can do the job at 90%+ fidelity, use it.
+- If custom CSS is required, keep changes surgical and avoid global overrides.
+- If unsure between visual flair and familiarity, choose familiarity.
+- If one detail looks unfinished, assume customers will notice it.
+
+## Response Style For Han-Driven Feedback
+
+When reporting work:
+
+- Call out what was changed to improve trust/familiarity.
+- Explicitly mention where placeholders were removed.
+- Explicitly mention which custom styles were avoided or reduced.
+- Note any remaining deltas from the customer's current site and why they remain.

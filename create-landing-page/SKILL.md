@@ -1,0 +1,383 @@
+---
+name: create-landing-page
+description: Build custom Mintlify docs landing pages (index.mdx) with hero sections, navigation cards, quick-start steps, and responsive dark-mode support. Use when creating or redesigning a documentation landing page, index.mdx, or custom Mintlify homepage.
+---
+
+# Create Landing Page
+
+Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`).
+
+## Before You Start
+
+1. Read the project's `docs.json` to understand navigation structure, brand colors, and existing page paths.
+2. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
+3. Confirm which docs pages already exist so all card/button `href` values point to real paths.
+4. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
+5. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
+
+## Critical Mintlify Gotchas (read this before writing any JSX)
+
+These issues cost real time on past projects. Account for them upfront.
+
+### Gotcha 1: Mintlify strips semantic HTML5 elements
+
+MDX compilation silently removes `<header>`, `<footer>`, and `<nav>` elements and all their children. The page will render with missing chunks and no error.
+
+**Rule:** Always use `<div>` for structural wrappers on a custom landing page. Reserve `<section>` for the hero (it survives). For accessibility, add `role` attributes instead:
+
+```mdx
+{/* BAD — will be stripped from output */}
+<header className="w-full bg-white">...</header>
+<nav className="flex gap-4">...</nav>
+<footer className="bg-black">...</footer>
+
+{/* GOOD — renders reliably */}
+<div role="banner" className="w-full bg-white">...</div>
+<div role="navigation" className="flex gap-4">...</div>
+<div role="contentinfo" className="bg-black">...</div>
+```
+
+Also safe: `<section>`, `<div>`, `<span>`, `<a>`, `<img>`, `<svg>`, `<h1>`–`<h6>`, `<p>`, `<ul>`/`<li>`, `<button>`.
+
+### Gotcha 2: `mode: "custom"` does NOT hide the sidebar, navbar, or tabs
+
+`mode: "custom"` on its own only removes the sidebar's *content padding* — it leaves the 19rem sidebar column, the top navbar, and the product tabs in place. For a fully bespoke landing page (with its own header) you must inject CSS to hide them and reset the content offset.
+
+**Required CSS for a chromeless landing page — put it in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `maple` theme; other themes (`luma`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
+
+```css
+/* custom.css at the repo root */
+html[data-current-path="/"] #sidebar,
+html[data-current-path="/"] #navbar,
+html[data-current-path="/"] .nav-tabs,
+html[data-current-path="/"] div:has(> .nav-tabs) {
+  display: none !important;
+}
+html[data-current-path="/"] #content-container {
+  margin-left: 0 !important;
+  padding-top: 0 !important;
+  gap: 0 !important;
+  min-height: 0 !important;
+}
+html[data-current-path="/"] #content-area {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin-top: 0 !important;
+  padding: 0 !important;
+}
+html[data-current-path="/"] #content {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+```
+
+Why each rule matters:
+
+- `#sidebar` — the fixed-position 19rem left rail that carries tabs + sidebar groups on maple.
+- `#navbar` — both desktop and mobile navbars share this id.
+- `.nav-tabs` — the product tabs list (e.g. "Get Started / Journeys / Integrations").
+- `div:has(> .nav-tabs)` — the tabs' direct parent wrapper (`<div class="hidden lg:flex px-12 h-12">`) has no id and leaves a 48px empty strip if not removed. `:has()` is supported in all modern browsers and reliably targets it.
+- `#content-container` — applies `lg:ml-[19rem]` to reserve space for the sidebar and `pt-[120px]` for the mobile navbar. Both must be zeroed.
+- `#content-area` and `#content` — apply a max-width that centers the content and leaves white space on either side. Override to 100% for true full-bleed.
+
+**Do not use `div:has(> #navbar)`** — the desktop `#navbar`'s parent contains the whole page layout, so you would hide the entire site.
+
+### Gotcha 3: Style with Tailwind utilities, never with custom CSS classes in an inline `<style>` block
+
+This is the single biggest failure mode for landing pages. Mintlify's MDX compiler silently drops large `<style>{`...`}</style>` blocks during compilation. The class names on your JSX elements survive, but the CSS rules defining those classes do not — so the page renders as a wall of unstyled text. Symptoms: classes like `class="my-hero"` appear in the rendered HTML, but no matching `.my-hero { ... }` rule is present in any `<style>` tag.
+
+**Strict rules to make styling reliable:**
+
+1. **Style every element with Tailwind utility classes inline on the JSX.** Mintlify's build pipeline compiles them into `mint-` prefixed classes (e.g. `mint-rounded-xl`, `mint-bg-[#0c244c]`) inside `<style data-custom-css-index="0">`. This pipeline is reliable and you can verify it survived by greping the rendered HTML for `mint-` prefixed classes.
+2. **Do NOT define custom CSS classes for the page** (`.symmetry-hero`, `.product-card`, etc.) inside an inline `<style>{`...`}</style>` block. Even when the syntax looks correct, MDX compilation drops them once the block grows past trivial size.
+3. **`custom.css` at the repo root is the only reliable place for page-scoped CSS rules.** Mintlify auto-loads it and injects it as `<style data-custom-css-index="0">`. Use it for the chrome-hiding rules (Gotcha 2) and any unavoidable custom selectors. Scope homepage rules with `html[data-current-path="/"]` to avoid leaking to other pages.
+4. **Never put a giant inline `<style>{`...`}</style>` block at the top of `index.mdx` to define visual classes.** If you find yourself writing more than ~25 lines of CSS inline, stop and move it to `custom.css`.
+
+```mdx
+{/* BAD — large inline style block; rules silently disappear in production */}
+<style>{`
+  .my-hero { background: linear-gradient(...); padding: 5rem 0; }
+  .my-card { border: 1px solid #e5eaf0; border-radius: 12px; padding: 24px; }
+  /* ...300 more lines... */
+`}</style>
+<section className="my-hero">...</section>
+<div className="my-card">...</div>
+
+{/* GOOD — inline Tailwind, compiles via the Mintlify pipeline */}
+<section className="relative overflow-hidden bg-gradient-to-br from-[#0c244c] to-[#13315c] py-20">...</section>
+<div className="rounded-xl border border-[#e5eaf0] dark:border-white/10 p-6">...</div>
+```
+
+Why Tailwind survives where custom classes don't: Tailwind utilities are processed by Mintlify's CSS pipeline at build time, deduplicated, and emitted as a separate compiled stylesheet. Inline `<style>` blocks go through the MDX pipeline, which treats `<style>{` as a JSX expression and is fragile under length and special characters.
+
+### Gotcha 4: Inline SVG icons must be a single `<path>`, not multiple shape elements
+
+MDX/JSX processing can silently drop individual children from an inline `<svg>` when the icon is composed of multiple shape elements like `<circle>`, `<rect>`, `<line>`, plus `<path>`. The result is a half-rendered icon (e.g., a magnifying glass that shows only the diagonal handle and is missing the lens circle), with no compile error and no warning.
+
+**Rule:** Build every inline SVG icon as a single `<path>` with a `d` attribute that draws the entire shape. Do not mix `<circle>`, `<rect>`, `<line>`, etc. with `<path>` siblings inside the same `<svg>`.
+
+```mdx
+{/* BAD — circle is silently dropped on some Mintlify builds; only the handle renders */}
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+  <path d="M21 21l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+</svg>
+
+{/* GOOD — single path draws lens + handle in one stroke; renders reliably */}
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+  <path
+    d="M21 21l-5.2-5.2m0 0a7.5 7.5 0 1 0-10.6-10.6 7.5 7.5 0 0 0 10.6 10.6z"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
+</svg>
+```
+
+Additional rules for inline SVG icons:
+
+- Use **inline `style={{flexShrink: 0}}`** instead of the `flex-shrink-0` class on icons inside flex containers — flex parents can otherwise squeeze the icon to zero width even when `width`/`height` attributes are set.
+- Source single-path icons from [Heroicons](https://heroicons.com), [Lucide](https://lucide.dev), or [Phosphor](https://phosphoricons.com) — all of them ship single-path SVGs by default. Copy the `d` attribute, set `stroke="currentColor"`, and apply a `text-*` Tailwind class to color it.
+- Prefer Font Awesome icons via the Mintlify `<Card icon="..."/>` prop or `<Icon icon="..."/>` component when an icon sits inside a Mintlify component — they are server-rendered and never affected by this issue.
+- After adding an inline SVG, verify it renders fully in the browser. A partial icon (e.g., only the path, missing the circle) is the signature symptom of this gotcha.
+
+### Gotcha 5: Confirm rendered output during iteration
+
+After meaningful changes, fetch the dev server HTML and verify two separate things — that the **content** rendered AND that the **styles** are actually being applied. Failures in Gotcha 3 (CSS rules getting stripped) leave the elements present but unstyled, so a content-only check is not enough.
+
+```bash
+# 1. Content check — distinctive text from each major section must appear
+curl -s http://localhost:3000/ | grep -c 'Book demo'
+# expect: > 0
+
+# 2. Style check — Tailwind compiled output must be present
+curl -s http://localhost:3000/ | grep -o 'mint-[a-z0-9-]\+' | wc -l
+# expect: hundreds-to-thousands of mint- prefixed classes for a real landing page
+
+# 3. Anti-pattern check — there should be no orphaned custom class names without matching rules
+# If you used a custom class like .symmetry-hero, confirm a matching rule exists somewhere:
+curl -s http://localhost:3000/ | grep -c 'symmetry-hero {'
+# expect: > 0 if you defined the class; 0 here means the rule was stripped (see Gotcha 3)
+```
+
+If a visible piece of text does not appear in the rendered HTML, an element is probably being stripped (see Gotcha 1) or a parent is `display:none`. If the text is there but the page looks unstyled, your CSS rules were stripped (see Gotcha 3) — switch to Tailwind utilities and move any remaining custom rules to `custom.css`. Do not rely on visual inspection alone — MDX silently drops content and CSS.
+
+## docs.json Registration
+
+`index.mdx` must be listed in `docs.json` navigation. The value `"index"` maps to `index.mdx` at the repo root (no extension).
+
+**Single-product (tabs at root):**
+```json
+{
+  "navigation": {
+    "tabs": [
+      { "tab": "Home", "pages": ["index"] },
+      { "tab": "Docs", "groups": [...] }
+    ]
+  }
+}
+```
+
+**Multi-product (Developer Platform + Help Center, etc.):**
+```json
+{
+  "navigation": {
+    "products": [
+      {
+        "product": "Developer Platform",
+        "tabs": [
+          { "tab": "Home", "pages": ["index"] },
+          { "tab": "Documentation", "groups": [...] }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Also confirm `docs.json` has `$schema`, `name`, `colors.primary`, `logo` (light/dark SVGs + `href`), and `favicon`.
+
+## Proven Section Order
+
+From high-quality Mintlify docs sites (e.g. Miro Developer Platform):
+
+1. **Hero** — value prop headline, subheading, primary + secondary CTA buttons, optional hero image
+2. **Quick Start** — `<Steps>` with 3–4 steps to first success; at least one code block; collapsible response in `<Accordion>`
+3. **Feature Overview** — `<CardGroup cols={3}>` (6 cards), each showing a major product area with icon + 1–2 sentence description
+4. **Popular Paths** — `<CardGroup cols={3}>` (4–6 cards) to the most-visited docs sections
+5. **Resources / Community** — `<CardGroup cols={2}>` (4 cards) linking to GitHub, community, changelog, status page
+6. **Closing CTA** — dark/brand-colored `<div>`, repeat headline + single primary CTA; optional decorative SVGs with `pointer-events-none`
+
+## Page Skeleton
+
+```mdx
+---
+mode: "custom"
+title: "Welcome"
+---
+
+{/* 1. Optional custom <div role="banner"> site header (Tailwind classes inline) */}
+{/* 2. Hero <section> with inner max-width container */}
+{/* 3. Content <div>s with styled <h2> + subtitle + cards/steps */}
+{/* 4. Optional closing CTA banner */}
+{/* 5. Optional custom <div role="contentinfo"> footer */}
+```
+
+Chrome-hiding CSS lives in `custom.css` at the repo root, not inline (see Gotcha 2). All visual styling is inline Tailwind on each element (see Gotcha 3) — do not introduce a top-of-file `<style>` block to define custom classes.
+
+Use only `<div>`, `<section>`, `<a>`, `<img>`, `<svg>`, `<h*>`, `<p>`, `<ul>`/`<li>`, `<span>`, `<button>`. Do **not** use `<header>`, `<footer>`, or `<nav>` (stripped by MDX — see Gotcha 1).
+
+## Workflow
+
+### 1. Frontmatter
+
+- Set `mode: "custom"` and `title: "Welcome"`.
+- `mode: "custom"` alone does **not** remove Mintlify chrome — add the CSS from Gotcha 2 to `custom.css` (at the repo root) when a chromeless design is desired. Do not put it in an inline `<style>` block (Gotcha 3).
+
+### 2. Optional Custom Site Header
+
+Only build one when the brand's marketing site has a distinctive navbar you are replicating. If the user is happy with Mintlify's default chrome, skip this section and omit the CSS overrides from Gotcha 2.
+
+- Wrap everything in a single `<div role="banner">` (never `<header>` — see Gotcha 1).
+- Use a two-row layout when replicating a typical SaaS header: marketing nav row + product/docs tabs row, separated by a `border-t` in the theme's border color.
+- Inside each row, a `mx-auto max-w-7xl flex items-center justify-between px-4 sm:px-6 lg:px-8` container keeps content aligned with the rest of the page.
+- Links are plain `<a>` elements with `className` — do not wrap groups in `<nav>`.
+- Use the same logo file(s) declared in `docs.json` (`/images/...`). Include light/dark variants with `block dark:hidden` + `hidden dark:block`.
+- Primary CTA = filled pill in the brand color; secondary CTA = outline pill. Match the rest of the page's button styling.
+- Allow the tabs row to scroll horizontally on small screens: `overflow-x-auto` + `whitespace-nowrap` on each tab.
+- Every tab `href` must resolve to a real docs page — grep the repo for `<section-slug>/overview.mdx` or similar entry points before wiring them up.
+
+### 3. Hero Section
+
+- Full-bleed section with generous vertical padding (`py-16`–`py-20`) and no page-level horizontal margin wrapper around the hero itself.
+- Use `relative overflow-hidden` on the hero `<section>` for full-bleed backgrounds. Do **not** use the viewport-width breakout hack (`left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen` or `-mx-[50vw] w-screen`) — it causes horizontal overflow and scroll issues.
+- Inner content should still use a max-width container (`max-w-5xl`–`max-w-7xl`), centered (`mx-auto`), with horizontal padding for readability.
+- Two-column grid on desktop, single-column on mobile.
+- Visually distinct background (brand color, gradient, or image/video with overlay).
+- `<h1>` heading with responsive sizing (`text-4xl` → `text-6xl`), `font-semibold`/`font-bold`, high-contrast color.
+- `<p>` subtitle below the heading, `text-base`–`text-xl`, max-width constrained.
+- Primary CTA button (brand background, links to quickstart) + secondary CTA button (outline style).
+- Buttons: `rounded-lg`/`rounded-full`, hover transitions, `flex-wrap` + `gap-3`/`gap-4`, actionable text.
+- If hero image: `alt` attribute, `noZoom`, responsive sizing, light/dark variants if needed.
+
+### 4. Section Containers + Heading Blocks (required)
+
+- Every major section below the hero must be wrapped in the same horizontal container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`.
+- Each section starts with a heading block before cards/steps:
+  - styled `<h2>` (`text-2xl`–`text-4xl`, `font-bold`, dark-mode-safe color)
+  - subtitle `<p>` (`text-base`, muted tone, dark-mode-safe color)
+- Section titles should be short and in Title Case. Prefer concise 1-4 word headings like `Quick Start`, `API Reference`, or `Resources`.
+- Avoid long sentence-style section titles and avoid overline/eyebrow labels unless the user explicitly wants them.
+- Do not rely on plain markdown headings alone for major sections; use explicit styled heading/subtitle markup.
+- Add consistent spacing between sections (`mt-14`–`mt-20`).
+
+### 5. Quick Start Section
+
+- Use `<Steps>` with `<Step>` children, 3–4 steps.
+- Logical progression (create account → credentials → authenticate → first call).
+- Each step has a `title` prop and brief prose.
+- Include at least one code snippet with language tag.
+- Wrap example responses in `<Accordion>` or `<Note>`.
+- Link to deeper docs from steps.
+
+### 6. Navigation Cards
+
+**Mintlify `<Card>` / `<CardGroup>`:**
+- `<CardGroup cols={2}>` or `cols={3}`.
+- Each card: `title`, `icon` (Font Awesome name), `href` (valid path), 1–2 sentence body.
+- Optionally set `cta` prop for clarity.
+
+**Custom image cards (when richer previews are needed):**
+- `<a>` tag with `group`, `block`, `rounded-2xl`, `border`, `overflow-hidden`, `no-underline`.
+- Hover border color change to brand color.
+- Fixed-height image container, `alt` + `noZoom`.
+- Body: `<h3>` title, `<p>` description, arrow indicator with `group-hover` brand color.
+- Grid: `grid-cols-1 md:grid-cols-2` (or `md:grid-cols-3`), `gap-4`–`gap-6`.
+
+### 7. Mintlify Built-in Components
+
+No imports needed — these are available in any MDX page:
+
+| Component | Key props | Use for |
+|-----------|-----------|---------|
+| `<Card>` | `title`, `icon`, `href`, `cta` | Navigation tiles |
+| `<CardGroup>` | `cols={2\|3}` | Grid wrapper for Cards |
+| `<Columns>` | `cols={2\|3}` | Grid alternative (Cards without CardGroup) |
+| `<Steps>` | — | Sequential tutorial wrapper |
+| `<Step>` | `title` | Individual numbered step |
+| `<AccordionGroup>` | — | Wrapper for multiple Accordions |
+| `<Accordion>` | `title` | Collapsible section (e.g. response examples) |
+| `<Frame>` | — | Embed wrapper for iframes / YouTube |
+| `<Tip>` | — | Blue callout — suggestions |
+| `<Note>` | — | Gray callout — important info |
+| `<Warning>` | — | Red callout — cautions |
+
+**Icon names** (Font Awesome 6 names used in Card `icon` prop): `code`, `plug`, `desktop`, `robot`, `book-open`, `rocket`, `graduation-cap`, `shuffle`, `clock`, `users`, `github`, `bullhorn`, `square-terminal`, `store`, `arrow-right`, `check`, `star`, `zap`, `layers`, `settings`, `shield`, `cpu`.
+
+### 8. Support / Community Section (optional)
+
+- At least one support link and one community link.
+- Use `<Card>` components with icon, title, description, and `href`.
+
+### 9. Closing CTA Banner (optional)
+
+- Visually distinct from content sections.
+- Strong heading + subtitle + CTA button linking to quickstart.
+
+### 10. Final Passes
+
+**Element audit:** Confirm no `<header>`, `<footer>`, or `<nav>` tags remain (Gotcha 1). Grep the file: `rg -n '^\s*<(header|footer|nav)\b' index.mdx` should return zero hits.
+
+**Render audit:** With `mint dev` running, pick a distinctive string from each major section (a heading, a button label, a card title) and confirm it appears in the server-rendered HTML:
+
+```bash
+curl -s http://localhost:3000/ | grep -c 'your distinctive string here'
+# must return > 0; a zero means the element was stripped or is display:none
+```
+
+Check one string per section — hero, quick start, cards, and CTA banner at minimum.
+
+**Chrome audit (when using the CSS from Gotcha 2):** open the rendered page and confirm:
+- no empty 48px strip at the top (tabs wrapper removed)
+- hero extends edge-to-edge (no 19rem gutter on the left)
+- no default Mintlify navbar or sidebar visible
+
+If chrome is still visible, your `custom.css` is not being picked up. Check that the file is at the repo root, that `mint dev` was restarted after creating it, and that the rules made it into the rendered HTML: `curl -s http://localhost:3000/ | grep -c 'data-current-path="/"\] #sidebar'` should be `> 0`.
+
+**Styling audit (Gotcha 3):** confirm Tailwind compiled successfully and no custom CSS rules were stripped:
+
+```bash
+# Tailwind classes must be present in the rendered output
+curl -s http://localhost:3000/ | grep -o 'mint-[a-z0-9-]\+' | wc -l   # expect hundreds+
+
+# Inline <style> block(s) in index.mdx should be small or absent
+rg -n '<style>{`' index.mdx | wc -l   # expect 0
+```
+
+If the page renders as unstyled text in the browser but content is present in the HTML, the CSS rules were dropped — switch to inline Tailwind utilities and move any remaining selectors to `custom.css`.
+
+**SVG icon audit (Gotcha 4):** every inline `<svg>` icon should contain exactly one `<path>` child — no `<circle>`, `<rect>`, or `<line>` siblings.
+
+```bash
+# Count inline SVGs whose body uses circle/rect/line — these are at risk of partial rendering
+rg -n -U '<svg[^>]*>(?:[^<]|<(?!/svg>))*<(?:circle|rect|line)\b' index.mdx | wc -l
+# expect: 0
+```
+
+If any are flagged, replace them with a single-path equivalent from Heroicons / Lucide / Phosphor, or swap to a Mintlify `<Icon icon="..."/>` / Font Awesome name on a `<Card>`.
+
+**Dark mode:** Every `text-*`, `bg-*`, and `border-*` class needs a `dark:` variant.
+
+**Responsive:** Multi-column → single-column on mobile. Text sizes scale down. Buttons stack vertically on small screens. Decorative elements hidden on mobile if needed.
+
+**Section rhythm:** Each section has horizontal margins, styled `<h2>` titles, and subtitle text for scannability.
+
+**Branding:** One primary brand color used consistently for CTAs, hover states, accents. Max 2 accent colors total.
+
+**Accessibility:** Meaningful `alt` text on all images. `role="banner"` / `role="navigation"` / `role="contentinfo"` on any `<div>`s that substitute for stripped semantic tags. Links have visual affordances beyond color. Sufficient contrast in both modes. No placeholder copy or commented-out JSX.
+
+**Links:** Run `mint broken-links` or manually verify every `href` resolves to an existing page. Header tabs and footer columns are easy to miss — verify each one individually.
