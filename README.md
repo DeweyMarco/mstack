@@ -8,6 +8,7 @@ A collection of Claude Code skills for Mintlify documentation workflows.
 |-------|-------------|
 | [`/docs-to-mintlify`](./docs-to-mintlify/SKILL.md) | Convert any existing docs site into a Mintlify-compatible repo with proper MDX files, components, and navigation |
 | [`/fix-broken-links`](./fix-broken-links/SKILL.md) | Fix all broken links in a Mintlify project until `mint broken-links` reports success |
+| [`/preview-qa`](./preview-qa/SKILL.md) | Mechanical parity gate that runs every deterministic check on a preview (chrome, icons, collapsibility, backgrounds, structural parity, visual verification) before handing off to `/han-review` |
 | [`/han-review`](./han-review/SKILL.md) | CEO-level QA and design review to make Mintlify previews feel production-ready |
 | [`/create-landing-page`](./create-landing-page/SKILL.md) | Build custom Mintlify docs landing pages with hero sections, navigation cards, and dark-mode support |
 | [`/style-docs`](./style-docs/SKILL.md) | Style and polish docs sites with strong visual hierarchy, Mintlify-native components, and accessible theming |
@@ -58,7 +59,8 @@ When migrating an existing docs site to Mintlify, apply the skills in this order
 2. **`/fix-broken-links`** — clean up cross-page refs that broke during slug normalization. Re-run after any later step that moves or renames pages.
 3. **`/create-landing-page`** — build a custom `index.mdx`. Runs after migration because it reads `docs.json` and needs the real page inventory so card/button `href` values point to existing paths.
 4. **`/style-docs`** — polish IA, components, and theming. May restructure navigation, in which case re-run `/fix-broken-links`.
-5. **`/han-review`** — final CEO-level QA gate. Often kicks work back to `/style-docs` or `/create-landing-page`; loop until it passes.
+5. **`/preview-qa`** — mechanical parity gate. Walks every deterministic check (chrome, icons, sidebar collapsibility, multi-tone backgrounds, structural parity, visual verification) and produces a PASS/FAIL report. Re-run from gate 1 after any fix.
+6. **`/han-review`** — final CEO-level human-quality gate. Only invoke after `/preview-qa` reports all gates PASS. Often kicks work back to `/style-docs` or `/create-landing-page`; loop until it passes.
 
 For a greenfield docs site (no source to migrate), skip step 1 and hand-bootstrap a minimal `docs.json` plus stub pages before `/create-landing-page`.
 
@@ -71,6 +73,10 @@ Converts any existing documentation site into a Mintlify-compatible repo. Handle
 ### `/fix-broken-links`
 
 Runs `mint broken-links`, diagnoses each issue, applies fixes, and loops until the check passes clean.
+
+### `/preview-qa`
+
+Mechanical parity gate that runs before `/han-review`. Walks seven deterministic gates — config validation, source-mirror parity, chrome parity (global + per-section), sidebar collapsibility, background and theme parity, visual verification (preview vs source screenshots in light/dark/mobile), and a structured output report. Catches the long tail of defects (blank icons under the wrong library, missing chevrons, monotone-vs-multitone backgrounds, asymmetric CTAs) so `/han-review` can stay focused on subjective polish.
 
 ### `/han-review`
 

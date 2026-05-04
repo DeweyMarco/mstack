@@ -111,19 +111,56 @@ Minimal example:
 
 ### Mintlify collapsible navigation guardrail (critical)
 
-When the user asks to make a sidebar "collapsible" or to reduce a long scroll:
+Check this proactively during every source-mirror review, not only when the user asks. If the source site's sidebar shows chevrons / caret toggles next to section headers, the preview must show them too. Missing collapsibility is one of the most common silent parity gaps on first-pass migrations.
+
+**Core rules**
 
 - `expanded` only affects nested groups (a `group` inside another group's `pages` list).
-- Top-level groups are always expanded in Mintlify and cannot be collapsed.
+- Top-level groups are always expanded in Mintlify and **cannot** be collapsed.
 - If a section is long because `group.pages` contains many direct string paths, adding `expanded: false` alone will not change the scroll length.
-- For long flat sections, preserve the section overview page as the first direct page and move the remaining direct pages into a nested subgroup such as `Guides` with `expanded: false`.
 - Never remove pages to shorten navigation. Reorganize only.
-- After restructuring, validate parity before saving:
-  - same unique page paths before vs after for the affected tab or section
-  - no duplicate page paths
-  - no `*.mdx` file under the affected product prefix is orphaned from nav
+
+**Pattern A — Long single section needs an inner toggle**
+
+For one flat section that is too long to scroll, preserve the section overview page as the first direct page and move the remaining direct pages into a nested subgroup such as `Guides` with `expanded: false`. The inner subgroup gets a chevron; the outer section stays as a header.
+
+**Pattern B — Wrapper-group demotion (whole tab should be collapsible)**
+
+When the source's sidebar shows every section with its own chevron (Introduction, Connect, Transform, etc. each toggle independently), the preview's tab needs **wrapper-group demotion**:
+
+- Wrap all of a tab's existing top-level groups inside a single outer "wrapper" group.
+- This demotes every original section to nested-group status, which makes them eligible for `expanded: false`.
+- Set `"expanded": false` on every demoted section so they start collapsed; Mintlify auto-expands whichever section contains the active page.
+- The wrapper's name is rarely visible on its own — pick a name that matches the tab label (`"User Guide"` for the User Guide tab, `"API docs"` for the API docs tab, `"Templates"` for the Templates anchor) so it reads naturally if it ever surfaces.
+- See [reference.md → Wrapper-group demotion for collapsible sections](reference.md) for the JSON pattern and a worked before/after example.
+
+Apply Pattern A when one section is the problem; apply Pattern B when every section in a tab needs to be collapsible.
+
+**Validate parity after restructuring**
+
+- Same unique page paths before vs after for the affected tab or section.
+- No duplicate page paths.
+- No `*.mdx` file under the affected product prefix is orphaned from nav.
 
 Fail the task if any parity check fails; fix the restructuring logic instead of hand-dropping pages.
+
+### Tabs vs sibling groups — match the source toggle
+
+Mintlify `tabs` always render as a visible toggle bar above the page content. The buttons are intrinsic to the `tabs` shape — there is no setting that hides them. So `tabs` is a chrome decision, not just an internal nav structure.
+
+Decide between `tabs` and sibling `groups` from the source, never from the file system or convenience:
+
+| Source shows | Use in `docs.json` |
+|---|---|
+| Visible tab toggle buttons above the page (e.g. Stripe's Payments / Connect / Issuing) | `tabs` |
+| One continuous sidebar with multiple sections, no top-of-page toggle (e.g. Pathway) | sibling `groups` under one parent (or root-level `groups`) |
+
+Both directions are defects:
+
+- **`tabs` where the source has no toggle** — most common, usually because an agent reaches for `tabs` to satisfy the "one type of child per level" nesting rule when wrapping content under an anchor, dropdown, or tab. The fix is to flatten `tabs` to sibling `groups`. See [reference.md → Flattening `tabs` to sibling `groups`](reference.md).
+- **Sibling `groups` where the source shows a tab toggle** — less common but equally wrong. The fix is to promote the groups into `tabs` modeled on the source's top-of-page sections. See *Restructuring a large, flat navigation* below for the taxonomy and parity rules that govern this direction.
+
+This applies in all three contexts: at the navigation root, inside a dropdown's `anchors`, and inside an anchor's children. The check is always the same — fetch the source page being mirrored and look at what is rendered above the sidebar / content. If a tab-button row is present, the preview needs `tabs`; if not, the preview needs sibling `groups`.
 
 ### Restructuring a large, flat navigation
 
@@ -134,6 +171,7 @@ Apply this workflow when `docs.json` has a single tab with many flat groups, whe
 - Before designing tabs, look at the customer's public docs landing page (for example via `WebFetch` or the external-links context) and use its top-level sections as your tab list.
 - If the customer site exposes Payments / API Reference / Developer Tools at the top, your tabs should mirror that — even when the repo folders are organized differently.
 - Only invent a tab when a product area is large enough to justify its own top-level space (rule of thumb: >50 pages or a distinct user persona).
+- Do not use `tabs` if the source has no top-of-page tab toggle. Use sibling `groups` instead. See *Tabs vs sibling groups — match the source toggle* above.
 
 **2. Plan before writing. Do a scale audit first.**
 
@@ -226,7 +264,81 @@ When mirroring a section that has its own sidebar chrome:
 1. **Fetch the live source page in that section** and list every anchor / button / icon visible in its sidebar header. Then fetch a page in a *different* section and compare. If the lists differ, the source uses per-section anchors and the preview must do the same.
 2. **Match the icons to the same source heroicons / Lucide / Font Awesome glyph the live site uses.** Get the icon names from the rendered HTML (search the page source for the visible icon class), do not guess from the label.
 3. **Use per-dropdown / per-tab `anchors` arrays in `docs.json`.** Each dropdown or tab can carry its own `anchors` block. Put the section-specific link buttons there, not in `navigation.global.anchors`. Putting them in `global.anchors` makes them appear on every page, including the wrong section. See [reference.md → Per-dropdown sidebar anchors](reference.md) for the wrapping-anchor pattern that lets a dropdown carry both link-button anchors and content groups.
-4. **Verify visually after editing.** Open the preview in `mint dev` and confirm each section shows the right anchor buttons in the right order with the right icons. JSON validity is not enough — see the validation workflow below.
+
+   **Verify the wrapping anchor's label against the source.** When you use the wrapping-anchor pattern (an `anchor` with `groups` instead of `href`) to satisfy the "one type of child per level" nesting rule, Mintlify renders the wrapper's label as a visible clickable tab in the sidebar — *not* as invisible scaffolding. Before introducing a wrapper labelled "Documentation", "Templates", "Reference", etc., check the source sidebar for a matching label. If the source has no such label, the wrapper introduces a chrome defect; pick a label that exists on the source, or drop the link-button anchors so `groups` can sit directly under the dropdown without a wrapper. Do **not** try to put `groups` as a sibling of `anchors` inside a `dropdown` to remove the wrapper — Mintlify rejects this structure and the navbar disappears entirely. See reference.md for the schema warning and supported alternatives.
+4. **Check collapsibility behavior on the source.** Look for chevrons / carets next to each section header in the source sidebar. If the source's sections collapse/expand independently and the preview shows everything fully expanded with no toggles, the preview is missing a collapsibility pass. Apply the right pattern from the *Mintlify collapsible navigation guardrail* above (Pattern A for one long section, Pattern B / wrapper-group demotion for a whole tab). Toggle a section open and closed on the source to confirm before mirroring — some sites use static section headers that visually resemble chevrons but aren't interactive.
+5. **Verify visually after editing.** Open the preview in `mint dev` and confirm each section shows the right anchor buttons in the right order with the right icons, and that section toggles match the source. JSON validity is not enough — see the validation workflow below.
+
+### Logo and brand mark parity
+
+The navbar logo is a separate chrome dimension that fails in characteristic ways. The single biggest trap: the source's top-left mark is rarely *just* a wordmark. It is usually composed — wordmark plus a subtitle ("Developers", "Docs", "for Teams"), or wordmark plus a version badge, or wordmark plus a thin tagline. Pulling only the wordmark SVG from the source's static assets gives you a logo that looks "close" but is missing visible content.
+
+Steps to land logo parity in one pass instead of three:
+
+1. **Inspect the source navbar visually first, not the static asset.** Open the live source URL, look at the top-left, and identify every element that renders there. Screenshot the navbar and zoom in. Common compositions:
+   - Wordmark + stacked subtitle text (Pathway: `pathway` over `developers`).
+   - Wordmark + inline subtitle (`Stripe Docs`, where `Docs` is a separate span).
+   - Wordmark + version / channel badge (`v2`, `Beta`).
+   - Wordmark + product-line label (`for Teams`).
+2. **Inspect the source DOM, not just the asset.** The navbar logo is often `<img src="logo.svg">` *plus* a sibling `<span>` or `<div>` rendered by the source's framework. If you only download `logo.svg` and ship it, you drop the sibling element. Open DevTools on the source navbar, find the logo container, and read every child node — text, SVG, or both.
+3. **Bake composed elements into the SVG.** Mintlify's `logo.light` / `logo.dark` are single image references — there is no native "logo + tagline" composition. If the source's mark is composed, reconstruct it as a single SVG: extend the `viewBox`, add a `<text>` element with the subtitle (font-family list with sensible fallbacks: source font → web-safe → system), and set fills per mode. See [reference.md → Logo composition and sizing](reference.md) for the canonical SVG pattern.
+4. **Adjust `img.nav-logo` height when the SVG is taller than a wordmark.** Mintlify renders the navbar logo at a default `h-6` (24px). A two-line composed mark at 24px collapses both lines into illegibility. Override in `custom.css`:
+
+   ```css
+   img.nav-logo { height: 2.75rem; }
+   ```
+
+   Pick the height by measuring the source's rendered logo height (DevTools → computed → `height`), not by eye. Confirm against the source navbar; the wordmark glyph height in the preview should match the wordmark glyph height in the source.
+5. **Light + dark variants always.** `logo.light` is the file used in light mode, `logo.dark` in dark mode. The source's brand color usually flips — dark text on light, light text on dark. Build the two SVGs with explicit `fill` colors (do not rely on `currentColor` and a Mintlify mode hook; those don't exist for navbar logos). Verify both modes side-by-side against the source.
+6. **Match `logo.href`** to whatever the source's logo links to (usually the docs root or the marketing root). A logo that links to the wrong destination is a chrome defect even when the visual is pixel-perfect.
+
+When in doubt, do a side-by-side screenshot of the source navbar and the preview navbar at the same viewport. The full top-left mark — every glyph, every tagline, every badge — must match.
+
+### Frontmatter renders visibly — never fabricate it
+
+Treat MDX frontmatter as visible page chrome, not as out-of-band metadata. Every supported field has a rendering side effect:
+
+- `title` -> page H1 + browser tab + (often) sidebar entry
+- `sidebarTitle` -> sidebar label
+- `description` -> **subtitle text directly below the H1**, plus `<meta name="description">`
+- `icon` -> sidebar icon next to the entry
+- `mode` -> page width / chrome / TOC visibility
+
+The recurring trap is `description`. It looks like SEO metadata, and converters tend to auto-generate it from the body's first paragraph or a `Welcome to the <Product> developer hub`-style template. Mintlify renders that synthesized string verbatim as a subtitle on the page, which means a fabricated description is *visible content the source doesn't have* — a direct violation of the project's content-preservation rule.
+
+The rule for every frontmatter field:
+
+- If the source page renders matching text/icon/chrome -> copy it **verbatim**.
+- If the source does not -> **omit the field**.
+- Never paraphrase, summarize, or template-fill a frontmatter value to make a field "feel complete".
+
+Specifically for `description`: only set it when the source page has explicit subtitle / lead text rendered under the H1. Otherwise leave `description` out entirely. Empty SEO `<meta description>` is acceptable; visible subtitle text the source doesn't have is not. See [reference.md → Frontmatter renders visibly](reference.md). `/preview-qa` Gate 2 audits this against the live source.
+
+### Browser tab `<title>` parity
+
+The browser tab title is a parity dimension that sits outside the visible chrome and is the easiest source-mirror gap to miss. It does not surface in `mint validate`, it is not part of the sidebar audit, and the user only sees it in their tab strip — so it lives or dies on a deliberate check.
+
+Mintlify generates the browser tab `<title>` for every page from this template:
+
+```
+<frontmatter.title> - <docs.json.name>
+```
+
+The separator (` - `, hyphen with surrounding spaces) is hardcoded by Mintlify. There is **no native override** for the browser tab `<title>` — `og:title` and `twitter:title` frontmatter overrides only affect Open Graph / Twitter card titles, not the browser tab itself. See [reference.md → Browser tab title and SEO meta tags](reference.md) for the full mechanism breakdown.
+
+Practical implications:
+
+- **`title` controls both the page H1 and the browser tab.** They cannot diverge through `title` alone. If the source uses a short browser-tab title and a long H1, you must pick one.
+- **The separator is fixed.** If the source uses ` | ` or ` — `, the preview will still render ` - `. Document this as a known divergence in the QA report; do not try to patch it with custom JS (see *Custom JavaScript rules*).
+- **`docs.json.name` is the suffix.** Match the navbar text on the source — usually a short product name, not the legal name.
+
+When the source's browser tab format differs from its H1 (common: long marketing-style H1, short product-name browser tab):
+
+| Source pattern | Recommended frontmatter |
+|---|---|
+| H1 long, tab short ("Welcome to Foo Documentation!" / "Welcome \| Foo") | Set `title` to the short tab version. Place the long H1 as the first `# Heading` in the MDX body. |
+| H1 and tab match (most pages) | Use the source's title verbatim in `title`. |
+| H1 contains characters Mintlify drops (rare) | Set `title` to the cleaned tab version, place the original as `# Heading` in the body. |
 
 ### Pick the icon library before mapping icons
 
@@ -291,7 +403,7 @@ Each of these typically costs a round of QA if missed.
 
 - **`appearance.default`** — Mintlify defaults to dark. If the source site loads in light mode, set `"default": "light"` explicitly. Spot-check: open the source in incognito with no system preference and observe which mode loads.
 - **`name` field** — match the navbar text on the source site, not the legal product name. "Pathway" beats "Pathway Developer Documentation"; "Stripe Docs" beats "Stripe API Reference".
-- **Logo subscript or wordmark** — if the source logo has a custom subscript ("Product / Developers"), bake it into the SVG. Don't try to recreate it via custom CSS — fragile and theme-version-dependent.
+- **Logo composition** — the source's navbar mark is often a wordmark *plus* a subtitle, badge, or tagline rendered as a sibling DOM element. Pulling only the wordmark SVG drops the rest. Inspect the source navbar visually and in DevTools before grabbing assets, then bake the composed mark into a single SVG and bump `img.nav-logo` height in `custom.css` so both lines stay legible. See *Logo and brand mark parity* above and [reference.md → Logo composition and sizing](reference.md). Do not try to recreate the subtitle via Mintlify config — there is no native "logo + tagline" field.
 - **`colors.light` / `colors.dark`** — these are the **brand color** in each mode, not the page background. Putting `#ffffff` in `colors.light` turns every CTA white.
 - **Font weights** — when `@import`-ing a font, request the weights you actually use (e.g. `400,500,600,700`). Missing weights silently fall back to the nearest available, producing inconsistent heading thickness.
 - **Single-tone backgrounds when the source is multi-tone** — if the source site uses different colors for the page chrome, the sidebar panel, the navbar, and the main content (very common: grey page / light-grey sidebar / white content), setting only `body { background: ... }` paints everything one color because Mintlify's regions inherit the body bg by default. Override each region in `custom.css` using the selectors documented in [reference.md → Mintlify layout regions and selectors](reference.md). The most common trap: the sidebar panel is `#sidebar-content`, **not** `#sidebar` — guessing `#sidebar` produces a styled-but-still-grey sidebar that passes a quick visual check.
@@ -334,6 +446,20 @@ When custom CSS is necessary:
 5. Be careful with selectors on Mintlify internals because some references may change across updates.
 
 Use Tailwind utility classes when supported. Tailwind arbitrary values are not reliably supported, so use custom CSS for values outside the standard utility set.
+
+## Custom JavaScript rules
+
+Mintlify v4 has **no native support for arbitrary custom JavaScript**. There is no `customScripts`, no `head`, no `<script>` injection in the `docs.json` schema. Root-level `.js` files (e.g. a `custom.js` next to `custom.css`) are inlined as Next.js data payloads (`self.__next_f.push([1, "..."])`), **not** as executable `<script>` tags. They will not run in the browser, and the failure is silent — `mint dev` builds, the file is served, nothing runs.
+
+Do not write a root `custom.js` and assume it will execute. This is the most expensive trap in custom Mintlify work.
+
+Three correct paths when behavior must run in the browser:
+
+1. **Mintlify's native components and `docs.json` settings.** Almost every common ask (GitHub link in the navbar, external sidebar link, primary CTA, dropdown anchors, themed colors) has a native solution. Exhaust this option first — see [reference.md → Navbar and external sidebar links](reference.md) for the canonical patterns.
+2. **Build-time mutation of `docs.json`.** For data that needs to be "live-ish" (GitHub star count, latest release version, etc.), write a small Node script that fetches the value and patches `docs.json` in place, and wire it into a CI job or pre-commit hook. The label is then static at build time but updates whenever the script runs. See [reference.md → Live-ish data via build-time updater](reference.md).
+3. **Google Tag Manager** (`integrations.gtm.tagId` in `docs.json`). This is the only supported in-browser JS injection. Configure a custom HTML tag in GTM that runs the JS you need. Heavyweight; only reach for it when paths 1 and 2 cannot meet the requirement.
+
+Before writing any client-side JS, confirm with the user which of the three paths they want. Do not default to writing a `custom.js` file.
 
 ## Accessibility baseline
 

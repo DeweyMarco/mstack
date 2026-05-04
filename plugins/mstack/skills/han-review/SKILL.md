@@ -15,6 +15,12 @@ Optimize for trust and familiarity:
 2. Prefer Mintlify-native components over custom CSS.
 3. Treat every placeholder, rough edge, and mismatch as a bug to fix.
 
+## Prerequisite
+
+Before invoking `/han-review`, run `/preview-qa` and confirm every gate reports PASS. `/preview-qa` is the mechanical parity gate; it catches the deterministic defects (blank icons under the wrong library, missing chevrons, monotone-vs-multi-tone backgrounds, asymmetric CTAs, dropped pages) that this skill should not be spending review cycles on. If `/preview-qa` reports FAIL on any gate, fix the defects and re-run `/preview-qa` from gate 1 before continuing here.
+
+`/han-review` is for subjective polish; `/preview-qa` is for mechanical parity. Do not skip the prerequisite.
+
 ## When To Apply This Skill
 
 Apply automatically when the request includes terms like:
@@ -36,6 +42,7 @@ Apply automatically when the request includes terms like:
 - Light and dark modes both look intentional (no broken contrast states).
 - **Chrome parity (parity migrations only):** verify global anchors, navbar links, footer socials/links, and primary CTA match the source — count and label each one against a fresh fetch of the live site. Template defaults (Blog anchor, Twitter/GitHub socials, "Get started" CTA from `mint init`) are the most common parity misses because they look normal at a glance.
 - **Per-section chrome parity:** chrome parity must be checked **per dropdown / per tab**, not only globally. Many source sites show different sidebar anchor buttons in each section (e.g. Framework pages show one anchor set, Templates pages show another). Fetch a page from each section and compare anchor lists individually. If they differ on the source, they must differ on the preview — use per-dropdown `anchors` arrays in `docs.json`, not `navigation.global.anchors`.
+- **Sidebar collapsibility parity:** if the source sidebar shows chevrons / caret toggles next to section headers and the sections collapse/expand independently, the preview must too. Mintlify top-level groups cannot be collapsed; if every section in a tab needs a chevron, apply wrapper-group demotion (wrap all top-level groups inside one outer group, set `expanded: false` on each demoted section). Check this proactively during QA — the user should not have to ask. A preview where every section is permanently expanded against a source whose sections collapse is a parity defect, not a stylistic choice.
 - **Icons render, not just validate:** every icon referenced from `docs.json` (anchors, cards, frontmatter) must visibly render in the preview. Mintlify defaults to Font Awesome; Lucide names silently produce blank icon slots that pass JSON validation. Confirm by screenshot, not by parsing.
 - **Structural parity (parity migrations only):** for each page that mirrors a source URL, fetch the source and verify body-level structure against the preview — column count of card grids, number of cards / steps / tabs per section, presence and label of every CTA per card, ordering of sections. Repeated visual patterns (matching CTAs in every card, identical badges per row) must be applied to every sibling on the preview, not only the ones the user named in the most recent prompt. Partial application of a repeated pattern is the most common preview-quality regression.
 

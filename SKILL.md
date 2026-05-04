@@ -19,6 +19,7 @@ After installation, Cursor can discover each workflow independently:
 
 - `docs-to-mintlify`
 - `fix-broken-links`
+- `preview-qa`
 - `han-review`
 - `create-landing-page`
 - `style-docs`
@@ -29,6 +30,7 @@ If this repository was cloned directly into `~/.cursor/skills/mstack`, use the n
 
 - For docs migration, read `plugins/mstack/skills/docs-to-mintlify/SKILL.md`.
 - For broken links, read `plugins/mstack/skills/fix-broken-links/SKILL.md`.
-- For preview QA, read `plugins/mstack/skills/han-review/SKILL.md`.
+- For mechanical parity QA before han-review, read `plugins/mstack/skills/preview-qa/SKILL.md`.
+- For final launch-quality review, read `plugins/mstack/skills/han-review/SKILL.md`.
 - For landing pages, read `plugins/mstack/skills/create-landing-page/SKILL.md`.
 - For docs styling, read `plugins/mstack/skills/style-docs/SKILL.md`.

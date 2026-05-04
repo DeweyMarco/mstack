@@ -33,8 +33,11 @@ For every page in the discovered inventory:
   - If the nav label is **longer** than the H1, the script almost certainly grabbed the wrong source (page `<title>`, breadcrumb, or `og:title` instead of sidebar text). Fix the extraction — do not paper over it with `sidebarTitle`.
   - **Why this matters:** Mintlify's sidebar is typically ~240px wide. A 40-character marketing H1 wraps or ellipsizes there next to four-character siblings — it looks broken. The source site already solves this with a short sidebar label; preserve that distinction.
   - This rule only fires when Tier 1 nav extraction is in use. The Tier 2 directory-walk fallback has no sidebar label to compare against, so `title` carries both roles by default.
-- Description: pick the first substantive paragraph in the body. Skip headings, code fences, table rows, list items, and pure HTML/image blocks.
-- Before writing description YAML, strip all markdown/HTML syntax:
+- Description: **only set `description` if the source page has explicit subtitle / lead text directly under the page title** (a `<p class="lead">`, an `og:description`-style standfirst rendered above the body, or similar). In Mintlify, `description` is **not** pure metadata — it renders as a visible subtitle directly below the page H1, *and* it populates `<meta name="description">` for SEO. Synthesizing one from the body produces visible content the source does not have.
+  - Source has subtitle text -> copy that text **verbatim** into `description`.
+  - Source has no subtitle text -> **omit `description` entirely**. Do not fall back to "first paragraph", do not paraphrase the title, do not use a generic `Welcome to the <Product> developer hub`-style filler. An empty/missing `description` is correct when the source has none. SEO `<meta description>` will still be acceptable; matching the source's rendered page chrome takes priority over SEO completeness here.
+  - The script must not invent description text. If you cannot extract a subtitle deterministically, leave the field out and let `/preview-qa` Gate 2 confirm the omission against the source.
+- If the source does have subtitle text, before writing description YAML, strip all markdown/HTML syntax:
   - Markdown links `[text](url)` -> `text`
   - Images `![alt](url)` -> remove
   - Inline code/bold/italic markers -> strip
@@ -42,6 +45,7 @@ For every page in the discovered inventory:
   - Collapse whitespace and trim to about 200 characters
   - Replace smart quotes so YAML does not choke
 - Wrap `title:`, `sidebarTitle:`, and `description:` values in double quotes and replace embedded `"` with `'`.
+- **Never fabricate any frontmatter value.** Every frontmatter field in Mintlify has a visible side effect — `title` renders as the page H1 and browser tab, `sidebarTitle` renders in the sidebar, `description` renders as the subtitle under the H1, `icon` renders next to the sidebar entry. Treating frontmatter as out-of-band metadata is the single most common source of "the preview shows text the source doesn't" defects. Copy from source or omit; never generate.
 
 ## MDX Syntax Safety
 
