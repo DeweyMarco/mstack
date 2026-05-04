@@ -34,6 +34,7 @@ Apply automatically when the request includes terms like:
 - Typography, spacing, alignment, and icon sizing must be visually consistent.
 - Homepage sections should mirror the customer's hierarchy and scannability.
 - Light and dark modes both look intentional (no broken contrast states).
+- **Chrome parity (parity migrations only):** verify global anchors, navbar links, footer socials/links, and primary CTA match the source — count and label each one against a fresh fetch of the live site. Template defaults (Blog anchor, Twitter/GitHub socials, "Get started" CTA from `mint init`) are the most common parity misses because they look normal at a glance.
 
 ### 2) Pixel-Perfect UX
 

@@ -27,6 +27,12 @@ For every page in the discovered inventory:
 ## Frontmatter Extraction
 
 - Title: take the first `# H1` line of raw markdown, then remove that H1 from the body so it is not rendered twice. Fall back to a title-cased path segment if no H1 exists.
+- `sidebarTitle`: if you used Tier 1 nav extraction (Nuxt `_payload.json.navigation`, Docusaurus sidebar labels, GitBook `SUMMARY.md` link text, etc.), the source nav already carries a per-page short label. Compare it against the extracted H1:
+  - If the nav label **equals** the H1, omit `sidebarTitle` — `title` covers both rendered heading and sidebar entry.
+  - If the nav label is **shorter** than the H1 (the common case — marketing-style H1 like `Welcome to <Product> Developer Documentation!` paired with a terse sidebar entry like `Welcome`), write both: `title:` keeps the full H1, `sidebarTitle:` keeps the short nav label.
+  - If the nav label is **longer** than the H1, the script almost certainly grabbed the wrong source (page `<title>`, breadcrumb, or `og:title` instead of sidebar text). Fix the extraction — do not paper over it with `sidebarTitle`.
+  - **Why this matters:** Mintlify's sidebar is typically ~240px wide. A 40-character marketing H1 wraps or ellipsizes there next to four-character siblings — it looks broken. The source site already solves this with a short sidebar label; preserve that distinction.
+  - This rule only fires when Tier 1 nav extraction is in use. The Tier 2 directory-walk fallback has no sidebar label to compare against, so `title` carries both roles by default.
 - Description: pick the first substantive paragraph in the body. Skip headings, code fences, table rows, list items, and pure HTML/image blocks.
 - Before writing description YAML, strip all markdown/HTML syntax:
   - Markdown links `[text](url)` -> `text`
@@ -35,7 +41,7 @@ For every page in the discovered inventory:
   - HTML tags `<...>` -> strip
   - Collapse whitespace and trim to about 200 characters
   - Replace smart quotes so YAML does not choke
-- Wrap `title:` and `description:` values in double quotes and replace embedded `"` with `'`.
+- Wrap `title:`, `sidebarTitle:`, and `description:` values in double quotes and replace embedded `"` with `'`.
 
 ## MDX Syntax Safety
 

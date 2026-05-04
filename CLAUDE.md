@@ -40,6 +40,18 @@ description: One-sentence description used for trigger matching.
 
 To add a skill: create a new directory under `plugins/mstack/skills/` with a `SKILL.md`.
 
+## Workflow order
+
+For a migration from an existing docs site, run the skills in this order — each step assumes the previous one's outputs:
+
+1. `/docs-to-mintlify` — crawls the source and generates MDX + `docs.json` (the only skill that creates `docs.json`)
+2. `/fix-broken-links` — cleans up refs broken by slug normalization; re-run after any later step that moves pages
+3. `/create-landing-page` — reads `docs.json` and needs the real page inventory so card `href`s resolve
+4. `/style-docs` — polish; if it restructures navigation, loop back to `/fix-broken-links`
+5. `/han-review` — final QA gate; often kicks work back to `/style-docs` or `/create-landing-page`
+
+For a greenfield site (no source), skip step 1 and hand-bootstrap a minimal `docs.json` + stub pages before `/create-landing-page`.
+
 For Cursor, run `./scripts/install-cursor.sh` after changing skills. Cursor expects each skill at `~/.cursor/skills/<skill-name>/SKILL.md`; do not install into `~/.cursor/skills-cursor`, which is reserved for Cursor-managed built-in skills.
 
 Commits to main auto-push to GitHub via the post-commit hook.

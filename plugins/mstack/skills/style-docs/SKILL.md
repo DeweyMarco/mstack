@@ -158,6 +158,69 @@ For docs homepages and landing pages:
 
 Avoid marketing-style bloat. A docs homepage should help users start and orient quickly.
 
+## Matching a source site's branding
+
+When the goal is to make a Mintlify preview look like an existing source site (during or after `/docs-to-mintlify`), do not eyeball colors and fonts. Extract the source's design tokens directly from its rendered CSS, then map them deterministically to `docs.json` + `custom.css`. Eyeballing produces "close-but-wrong" results that fail QA.
+
+### Extract the live styling tokens
+
+Most modern docs sites publish their design tokens as CSS custom properties (`--color-primary-500`, `--font-heading`, etc.) and reference them throughout the rendered stylesheet:
+
+```bash
+# All CSS custom properties on :root
+curl -sS https://docs.example.com/ | grep -oE -- '--[a-z-]+:[^;]+;' | sort -u
+
+# Just the color palette
+curl -sS https://docs.example.com/ | grep -oE -- '--color-[a-z0-9-]+:\s*#[0-9a-fA-F]+' | sort -u
+
+# Default font-family rules (catch fonts not exposed as variables)
+curl -sS https://docs.example.com/ | grep -oE 'font-family:[^;}]+' | sort -u | head -20
+```
+
+If variables aren't in the initial HTML (SPA), fetch the linked stylesheet directly — find `<link rel="stylesheet" href="...">` in the source and `curl` that URL.
+
+### Identify font hosts
+
+For each non-system font name in the `font-family` rules, find where it's hosted:
+
+- **System stacks** (`-apple-system, BlinkMacSystemFont, ...`) — no action; matches by default.
+- **Google Fonts** — confirm at `fonts.google.com/specimen/<Name>`. Mintlify's `docs.json` `fonts.family` loads Google Fonts natively.
+- **Fontshare** (common for Open Sauce One, Satoshi, Switzer, General Sans, Cabinet Grotesk) — `@import url('https://api.fontshare.com/v2/css?f[]=<slug>@400,500,700&display=swap');` at the top of `custom.css`.
+- **Self-hosted / proprietary** — check the source's `@font-face` rules; often a CDN you can `@import`. If licensed and not redistributable, fall back to the closest open equivalent (Inter for most modern sans-serifs) and note the substitution.
+
+### Map tokens to the right config layer
+
+Mintlify covers a fixed subset of theming via `docs.json`. Everything beyond that goes in `custom.css`. Putting tokens in the wrong layer is the most common reason a preview looks subtly off.
+
+| Token | Goes in |
+|---|---|
+| Primary brand color (light + dark variants) | `docs.json` → `colors.primary`, `colors.light`, `colors.dark` |
+| Default appearance (light vs dark) | `docs.json` → `appearance.default` |
+| Page background color (light + dark) | `docs.json` → `background` |
+| Body font family | `docs.json` → `fonts.family` |
+| Site name in navbar | `docs.json` → `name` |
+| Logo files (light/dark) | `docs.json` → `logo.light`, `logo.dark`, `logo.href` |
+| Heading font (different from body) | `custom.css` (`@import` + `h1, h2, h3, h4, h5, h6 { font-family: ...; }`) |
+| Code font | `custom.css` (`@import` + `code, pre { font-family: ...; }`) |
+| Full color palette as CSS variables (e.g. `--brand-50` through `--brand-900`) | `custom.css` on `:root` |
+| Link colors (different from `colors.primary`) | `custom.css` with dark-mode override |
+| Card hover treatments, inline-code pill, gray outer background | `custom.css` |
+| Heading colors that differ from body text | `custom.css` |
+
+### Common misses
+
+Each of these typically costs a round of QA if missed.
+
+- **`appearance.default`** — Mintlify defaults to dark. If the source site loads in light mode, set `"default": "light"` explicitly. Spot-check: open the source in incognito with no system preference and observe which mode loads.
+- **`name` field** — match the navbar text on the source site, not the legal product name. "Pathway" beats "Pathway Developer Documentation"; "Stripe Docs" beats "Stripe API Reference".
+- **Logo subscript or wordmark** — if the source logo has a custom subscript ("Product / Developers"), bake it into the SVG. Don't try to recreate it via custom CSS — fragile and theme-version-dependent.
+- **`colors.light` / `colors.dark`** — these are the **brand color** in each mode, not the page background. Putting `#ffffff` in `colors.light` turns every CTA white.
+- **Font weights** — when `@import`-ing a font, request the weights you actually use (e.g. `400,500,600,700`). Missing weights silently fall back to the nearest available, producing inconsistent heading thickness.
+
+### Verify the match
+
+Side-by-side at matching URLs (`mint dev` vs live source). Compare in this order: page background, primary CTA, link color, heading font weight + style, code block font, sidebar entry color, hover states. If anything is off, re-pull the relevant token from the live site — do not adjust by eye.
+
 ## Theming and branding rules
 
 - Use one primary accent color consistently for emphasis, interactive states, and CTA treatment.

@@ -50,6 +50,18 @@ By default this copies skills to `~/.cursor/skills`. To install somewhere else, 
 CURSOR_SKILLS_DIR=/path/to/.cursor/skills ./scripts/install-cursor.sh
 ```
 
+## Workflow order
+
+When migrating an existing docs site to Mintlify, apply the skills in this order. Each step assumes the previous one has produced its outputs.
+
+1. **`/docs-to-mintlify`** — crawl the source site and generate MDX files + `docs.json` navigation. This is the only skill that creates `docs.json` from scratch.
+2. **`/fix-broken-links`** — clean up cross-page refs that broke during slug normalization. Re-run after any later step that moves or renames pages.
+3. **`/create-landing-page`** — build a custom `index.mdx`. Runs after migration because it reads `docs.json` and needs the real page inventory so card/button `href` values point to existing paths.
+4. **`/style-docs`** — polish IA, components, and theming. May restructure navigation, in which case re-run `/fix-broken-links`.
+5. **`/han-review`** — final CEO-level QA gate. Often kicks work back to `/style-docs` or `/create-landing-page`; loop until it passes.
+
+For a greenfield docs site (no source to migrate), skip step 1 and hand-bootstrap a minimal `docs.json` plus stub pages before `/create-landing-page`.
+
 ## Skills overview
 
 ### `/docs-to-mintlify`
