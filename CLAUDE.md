@@ -16,6 +16,7 @@ mstack/
         └── skills/
             ├── docs-to-mintlify/SKILL.md        # migrate any docs site to Mintlify
             ├── fix-broken-links/SKILL.md         # run mint broken-links until clean
+            ├── improve-agent-score/SKILL.md      # raise afdocs agent-readability score
             ├── han-review/SKILL.md               # launch-quality QA pass for previews
             ├── create-landing-page/SKILL.md      # build custom index.mdx
             └── style-docs/
