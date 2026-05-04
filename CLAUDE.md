@@ -1,27 +1,28 @@
 # mstack — Claude Code Skills for Mintlify
 
-This repo is a skill pack for Mintlify documentation workflows. Each subdirectory is a Claude Code skill invoked via a `/` command.
+This repo is a marketplace plugin for Mintlify documentation workflows, compatible with both Claude Code and Codex.
 
 ## Structure
 
 ```
 mstack/
-├── docs-to-mintlify/   # /docs-to-mintlify — migrate any docs site to Mintlify
-│   └── SKILL.md
-├── fix-broken-links/   # /fix-broken-links — run mint broken-links until clean
-│   └── SKILL.md
-├── han-review/         # /han-review — launch-quality QA pass for previews
-│   └── SKILL.md
-├── create-landing-page/ # /create-landing-page — build custom index.mdx
-│   └── SKILL.md
-└── style-docs/         # /style-docs — polish docs IA, components, and theming
-    ├── SKILL.md
-    └── reference.md    # extended design heuristics
+└── plugins/
+    └── mstack/
+        ├── .claude-plugin/plugin.json   # Claude Code manifest
+        ├── .codex-plugin/plugin.json    # Codex manifest
+        └── skills/
+            ├── docs-to-mintlify/SKILL.md        # migrate any docs site to Mintlify
+            ├── fix-broken-links/SKILL.md         # run mint broken-links until clean
+            ├── han-review/SKILL.md               # launch-quality QA pass for previews
+            ├── create-landing-page/SKILL.md      # build custom index.mdx
+            └── style-docs/
+                ├── SKILL.md                      # polish docs IA, components, and theming
+                └── reference.md                  # extended design heuristics
 ```
 
 ## Development
 
-Each skill lives in its own directory as a `SKILL.md` file with YAML frontmatter:
+Each skill lives in `plugins/mstack/skills/<name>/SKILL.md` with YAML frontmatter:
 
 ```markdown
 ---
@@ -33,7 +34,9 @@ description: One-sentence description used for trigger matching.
 ...
 ```
 
-To add a skill: create a new directory with a `SKILL.md` and add it to the table in `README.md`.
+To add a skill: create a new directory under `plugins/mstack/skills/` with a `SKILL.md`.
+
+Commits to main auto-push to GitHub via the post-commit hook.
 
 ## Testing
 
