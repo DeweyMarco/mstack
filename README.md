@@ -36,10 +36,18 @@ git clone https://github.com/mintlify/mstack ~/.claude/plugins/marketplaces/msta
 
 ### Cursor
 
-Clone into your Cursor skills directory:
+Clone the repo, then install the individual skills into Cursor's personal skills directory:
 
 ```bash
-git clone https://github.com/mintlify/mstack ~/.cursor/skills/mstack
+git clone https://github.com/mintlify/mstack
+cd mstack
+./scripts/install-cursor.sh
+```
+
+By default this copies skills to `~/.cursor/skills`. To install somewhere else, set `CURSOR_SKILLS_DIR`:
+
+```bash
+CURSOR_SKILLS_DIR=/path/to/.cursor/skills ./scripts/install-cursor.sh
 ```
 
 ## Skills overview

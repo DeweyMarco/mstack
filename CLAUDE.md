@@ -1,11 +1,14 @@
 # mstack — Claude Code Skills for Mintlify
 
-This repo is a marketplace plugin for Mintlify documentation workflows, compatible with both Claude Code and Codex.
+This repo is a marketplace plugin for Mintlify documentation workflows, compatible with Claude Code, Codex, and Cursor.
 
 ## Structure
 
 ```
 mstack/
+├── SKILL.md                              # Cursor compatibility shim
+├── scripts/
+│   └── install-cursor.sh                 # Copies skills into ~/.cursor/skills
 └── plugins/
     └── mstack/
         ├── .claude-plugin/plugin.json   # Claude Code manifest
@@ -35,6 +38,8 @@ description: One-sentence description used for trigger matching.
 ```
 
 To add a skill: create a new directory under `plugins/mstack/skills/` with a `SKILL.md`.
+
+For Cursor, run `./scripts/install-cursor.sh` after changing skills. Cursor expects each skill at `~/.cursor/skills/<skill-name>/SKILL.md`; do not install into `~/.cursor/skills-cursor`, which is reserved for Cursor-managed built-in skills.
 
 Commits to main auto-push to GitHub via the post-commit hook.
 
