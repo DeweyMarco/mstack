@@ -12,7 +12,7 @@ Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`
 1. Read the project's `docs.json` to understand navigation structure, brand colors, and existing page paths.
 2. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
 3. Confirm which docs pages already exist so all card/button `href` values point to real paths.
-4. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
+4. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
 5. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
 
 ## Critical Mintlify Gotchas (read this before writing any JSX)
@@ -39,15 +39,14 @@ MDX compilation silently removes `<header>`, `<footer>`, and `<nav>` elements an
 
 Also safe: `<section>`, `<div>`, `<span>`, `<a>`, `<img>`, `<svg>`, `<h1>`–`<h6>`, `<p>`, `<ul>`/`<li>`, `<button>`.
 
-### Gotcha 2: `mode: "custom"` does NOT hide the sidebar, navbar, or tabs
+### Gotcha 2: `mode: "custom"` hides the sidebar but keeps the navbar and tabs
 
-`mode: "custom"` on its own only removes the sidebar's *content padding* — it leaves the 19rem sidebar column, the top navbar, and the product tabs in place. For a fully bespoke landing page (with its own header) you must inject CSS to hide them and reset the content offset.
+`mode: "custom"` hides the sidebar, table of contents, and footer — but it keeps the top navbar and the product tabs bar. For a fully chromeless landing page with its own header, you need CSS to also hide the navbar and tabs and to reset the content offsets that the layout system still applies.
 
-**Required CSS for a chromeless landing page — put it in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `maple` theme; other themes (`luma`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
+**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `maple` theme; other themes (`luma`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
 
 ```css
 /* custom.css at the repo root */
-html[data-current-path="/"] #sidebar,
 html[data-current-path="/"] #navbar,
 html[data-current-path="/"] .nav-tabs,
 html[data-current-path="/"] div:has(> .nav-tabs) {
@@ -76,11 +75,10 @@ html[data-current-path="/"] #content {
 
 Why each rule matters:
 
-- `#sidebar` — the fixed-position 19rem left rail that carries tabs + sidebar groups on maple.
-- `#navbar` — both desktop and mobile navbars share this id.
-- `.nav-tabs` — the product tabs list (e.g. "Get Started / Journeys / Integrations").
+- `#navbar` — both desktop and mobile navbars share this id. `mode: "custom"` keeps the navbar visible; hide it here when you're providing your own header.
+- `.nav-tabs` — the product tabs list (e.g. "Get Started / Journeys / Integrations"). `mode: "custom"` keeps this visible.
 - `div:has(> .nav-tabs)` — the tabs' direct parent wrapper (`<div class="hidden lg:flex px-12 h-12">`) has no id and leaves a 48px empty strip if not removed. `:has()` is supported in all modern browsers and reliably targets it.
-- `#content-container` — applies `lg:ml-[19rem]` to reserve space for the sidebar and `pt-[120px]` for the mobile navbar. Both must be zeroed.
+- `#content-container` — applies `lg:ml-[19rem]` to reserve space for the sidebar and `pt-[120px]` for the mobile navbar. The sidebar is already hidden by `mode: "custom"`, but the layout margin may still be applied by the theme. Both offsets must be zeroed.
 - `#content-area` and `#content` — apply a max-width that centers the content and leaves white space on either side. Override to 100% for true full-bleed.
 
 **Do not use `div:has(> #navbar)`** — the desktop `#navbar`'s parent contains the whole page layout, so you would hide the entire site.
@@ -236,7 +234,7 @@ Use only `<div>`, `<section>`, `<a>`, `<img>`, `<svg>`, `<h*>`, `<p>`, `<ul>`/`<
 ### 1. Frontmatter
 
 - Set `mode: "custom"` and `title: "Welcome"`.
-- `mode: "custom"` alone does **not** remove Mintlify chrome — add the CSS from Gotcha 2 to `custom.css` (at the repo root) when a chromeless design is desired. Do not put it in an inline `<style>` block (Gotcha 3).
+- `mode: "custom"` hides the sidebar, table of contents, and footer — but keeps the top navbar and tabs. When a fully chromeless design is desired (custom header replacing the navbar), add the CSS from Gotcha 2 to `custom.css` at the repo root. Do not put it in an inline `<style>` block (Gotcha 3).
 
 ### 2. Optional Custom Site Header
 

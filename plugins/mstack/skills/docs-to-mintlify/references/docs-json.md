@@ -46,6 +46,7 @@ If `docs.json` does not have `contextual`, add:
     "devin",
     "windsurf",
     "mcp",
+    "add-mcp",
     "cursor",
     "vscode",
     "devin-mcp"

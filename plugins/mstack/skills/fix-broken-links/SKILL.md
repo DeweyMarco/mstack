@@ -48,18 +48,6 @@ Run `mint broken-links` again.
 
 - **Still broken links?** → Repeat from Step 3
 
-### Step 5: Add SEO Tag
-
-Add this to the bottom of the docs.json file in the root directory if it is not there already.
-
-```
-"seo": {
-    "metatags": {
-      "robots": "noindex"
-    }
-  }
-```
-
 ## Important
 
 - **Do not stop** until `mint broken-links` outputs `success no broken links found`
