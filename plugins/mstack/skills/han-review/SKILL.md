@@ -35,6 +35,9 @@ Apply automatically when the request includes terms like:
 - Homepage sections should mirror the customer's hierarchy and scannability.
 - Light and dark modes both look intentional (no broken contrast states).
 - **Chrome parity (parity migrations only):** verify global anchors, navbar links, footer socials/links, and primary CTA match the source — count and label each one against a fresh fetch of the live site. Template defaults (Blog anchor, Twitter/GitHub socials, "Get started" CTA from `mint init`) are the most common parity misses because they look normal at a glance.
+- **Per-section chrome parity:** chrome parity must be checked **per dropdown / per tab**, not only globally. Many source sites show different sidebar anchor buttons in each section (e.g. Framework pages show one anchor set, Templates pages show another). Fetch a page from each section and compare anchor lists individually. If they differ on the source, they must differ on the preview — use per-dropdown `anchors` arrays in `docs.json`, not `navigation.global.anchors`.
+- **Icons render, not just validate:** every icon referenced from `docs.json` (anchors, cards, frontmatter) must visibly render in the preview. Mintlify defaults to Font Awesome; Lucide names silently produce blank icon slots that pass JSON validation. Confirm by screenshot, not by parsing.
+- **Structural parity (parity migrations only):** for each page that mirrors a source URL, fetch the source and verify body-level structure against the preview — column count of card grids, number of cards / steps / tabs per section, presence and label of every CTA per card, ordering of sections. Repeated visual patterns (matching CTAs in every card, identical badges per row) must be applied to every sibling on the preview, not only the ones the user named in the most recent prompt. Partial application of a repeated pattern is the most common preview-quality regression.
 
 ### 2) Pixel-Perfect UX
 
@@ -57,12 +60,15 @@ Only add custom CSS when required to match customer branding or layout. Keep it 
 ## Review Workflow
 
 1. **Baseline alignment**
+   - Fetch the live source URL for any page being reviewed for parity. Do not work from the user's prose alone.
    - Compare preview with the customer's current docs/site.
    - Preserve familiar IA labels and nav grouping (Home, Guides, APIs, Reference, Learn, etc.).
+   - Diff body-level structure: column counts, card counts, presence and label of every CTA, section order. Treat any mismatch as a defect to fix, not a follow-up to defer.
 
 2. **Component-first pass**
    - Replace custom constructs with Mintlify components where possible.
    - Keep custom classes only where components cannot achieve required fidelity.
+   - When adding or changing a single element, edit the existing component tree in place. Do not replace `<CardGroup>` / `<Card>` / `<Columns>` / `<Steps>` with custom HTML to host one new child. The minimum-diff edit is almost always the correct edit.
 
 3. **Polish pass**
    - Remove placeholders and ambiguous text.
@@ -74,7 +80,13 @@ Only add custom CSS when required to match customer branding or layout. Keep it 
    - Validate dark and light themes.
    - Ensure hover/focus states remain readable and intentional.
 
-5. **Final acceptance pass**
+5. **Visual verification gate (chrome / icon / sidebar changes)**
+   - For any change touching docs chrome (sidebar anchors, navbar links, icons, dropdowns, footer, top CTAs): run `mint dev` locally, screenshot the affected page in the preview, screenshot the same URL on the live source at the same viewport and theme, and diff visually.
+   - JSON validation is not a substitute. The most common silent failure is an icon name from the wrong library (Lucide names under the default Font Awesome library) — the anchor renders, the icon slot is blank, and `docs.json` parses fine.
+   - Repeat in dark mode if the site supports it.
+   - Block completion until every anchor button shows the correct icon and every section's anchor list matches its source counterpart.
+
+6. **Final acceptance pass**
    - Confirm the page feels launch-ready, not demo-ready.
    - If any section feels "template-ish", revise before finishing.
 

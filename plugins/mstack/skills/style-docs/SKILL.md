@@ -51,6 +51,48 @@ Only add custom CSS when Mintlify configuration and built-in components cannot a
 - Use `Tabs` and `CodeGroup` to let users choose a language or framework once and keep that choice consistent on the page.
 - Use callouts sparingly to highlight important caveats, warnings, or tips.
 
+### 4. Edit existing components in place (minimum-diff rule)
+
+When adding or changing a single element on a page, edit the existing component tree in place. Never replace a working layout primitive (`<CardGroup>`, `<Card>`, `<Columns>`, `<Steps>`, `<Tabs>`, `<AccordionGroup>`) with custom HTML or CSS just to add a child element.
+
+- If the page already uses `<CardGroup cols={2}>`, keep it and add the new child inside an existing `<Card>`.
+- If a CTA needs to live next to a code snippet inside a `<Card>`, put the CTA inside that `<Card>` body — not in a sibling `<div>` that recreates the card visually.
+- Introducing a new wrapper class (`.pw-templates-cta`, `.pw-starting-examples`, etc.) to host content that already had a Mintlify primitive is a regression. Reach for `custom.css` only to style children of existing components, not to replace them.
+
+The diff for a new element on an otherwise-correct page should usually be one or two lines of MDX plus, at most, one new class in `custom.css`. If your diff is bigger, you are probably rebuilding layout that did not need rebuilding.
+
+### 5. Buttons and CTAs
+
+Mintlify has no native `<Button>` component. The canonical pattern for an action / CTA inside docs is a styled `<a>` with a class defined in `custom.css`.
+
+- Place the anchor **inside** the existing layout component (for example, inside a `<Card>` body), not as a sibling that replaces or wraps the layout.
+- Define the button class once in `custom.css` (background, hover, dark-mode override, focus state) and reuse it across pages.
+- Do not invent a `.pw-cta-card` / `.pw-templates-cta` wrapper to host a button. The host is whatever Mintlify component already exists on the page.
+- For multiple CTAs that share a visual style, use the same class on each — do not duplicate the CSS per page.
+
+Minimal example:
+
+```mdx
+<Card title="Getting Started" icon="bolt">
+  Install with `pip install pathway`.
+
+  <a className="pw-btn-accent" href="/developers/user-guide/introduction/first_realtime_app_with_pathway">Starting examples</a>
+</Card>
+```
+
+```css
+.pw-btn-accent {
+  display: inline-flex;
+  padding: 0.625rem 1.25rem;
+  background-color: var(--pw-accent);
+  color: #ffffff !important;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  text-decoration: none !important;
+}
+.pw-btn-accent:hover { background-color: var(--pw-accent-hover); }
+```
+
 ## Docs UX rules
 
 ### Visual hierarchy
@@ -160,7 +202,42 @@ Avoid marketing-style bloat. A docs homepage should help users start and orient 
 
 ## Matching a source site's branding
 
-When the goal is to make a Mintlify preview look like an existing source site (during or after `/docs-to-mintlify`), do not eyeball colors and fonts. Extract the source's design tokens directly from its rendered CSS, then map them deterministically to `docs.json` + `custom.css`. Eyeballing produces "close-but-wrong" results that fail QA.
+When the goal is to make a Mintlify preview look like an existing source site (during or after `/docs-to-mintlify`), do not eyeball colors, fonts, or layout. Extract the source's design tokens **and** layout structure directly from its rendered output, then mirror them deterministically in `docs.json`, MDX, and `custom.css`. Eyeballing or inferring from prose produces "close-but-wrong" results that fail QA.
+
+### Mirror the source layout, not just the tokens
+
+Branding parity covers tokens; layout parity covers structure. Both are required.
+
+Before changing a page that mirrors a source URL:
+
+1. **Fetch the source URL.** Use `WebFetch` (or `curl`) on the exact page the user referenced. Read the rendered DOM — column counts, card counts, which elements have CTAs, exact button labels, exact `href` targets, heading order.
+2. **Do not infer layout from the user's prose.** The user describes the *change*, not the full target state. "There should be a red button with starting examples and Pathway templates" describes one delta, but the actual source page may have CTAs on every card, a specific column count, and a specific section ordering. Confirm against the live DOM before editing.
+3. **Apply repeated visual patterns to every sibling.** If the source shows the same pattern across siblings — matching CTAs in every card, identical badges per row, the same icon style on every tile — apply the change to *every* sibling, not only the one named in the user's prompt. Doing one of two CTAs is a partial migration, not a finished one.
+4. **Confirm visually before stopping.** Compare side-by-side against the live source: column count, CTA presence per element, label text, hover state, dark mode. Any mismatch is a defect, not a follow-up.
+
+This is the single most common source of round-trip churn in preview work. A typical regression: the live page has two cards with red buttons in a 2-column grid; the agent reads the user's one-sentence prompt, stacks the cards vertically, and only adds a button to the card the user named. Three follow-up turns later, the layout is finally right. All of it would have been caught by fetching the source URL on turn one.
+
+### Audit sidebar / navbar chrome per section, not just globally
+
+Page-body parity is not enough. Many source sites change the sidebar anchor buttons, navbar links, or top-of-sidebar CTAs *per section* (Framework pages show one anchor set; Templates pages show a different anchor set; API reference shows a third).
+
+When mirroring a section that has its own sidebar chrome:
+
+1. **Fetch the live source page in that section** and list every anchor / button / icon visible in its sidebar header. Then fetch a page in a *different* section and compare. If the lists differ, the source uses per-section anchors and the preview must do the same.
+2. **Match the icons to the same source heroicons / Lucide / Font Awesome glyph the live site uses.** Get the icon names from the rendered HTML (search the page source for the visible icon class), do not guess from the label.
+3. **Use per-dropdown / per-tab `anchors` arrays in `docs.json`.** Each dropdown or tab can carry its own `anchors` block. Put the section-specific link buttons there, not in `navigation.global.anchors`. Putting them in `global.anchors` makes them appear on every page, including the wrong section. See [reference.md → Per-dropdown sidebar anchors](reference.md) for the wrapping-anchor pattern that lets a dropdown carry both link-button anchors and content groups.
+4. **Verify visually after editing.** Open the preview in `mint dev` and confirm each section shows the right anchor buttons in the right order with the right icons. JSON validity is not enough — see the validation workflow below.
+
+### Pick the icon library before mapping icons
+
+Mintlify's `docs.json` `icon` fields default to **Font Awesome**, not Lucide. Lucide names like `cpu`, `arrow-right-left`, `file-search-2`, `life-buoy` will silently fail to render under the default config — the anchor button shows up but the icon is blank.
+
+Before mapping any source icons:
+
+1. **Check `docs.json` for `icons.library`.** If it is unset, the site is using Font Awesome. If it is `"lucide"`, the site is using Lucide.
+2. **Map source icons to that library.** Common heroicon → Font Awesome mappings: `cpu-chip` → `microchip`, `arrows-right-left` → `arrow-right-arrow-left`, `document-magnifying-glass` → `file-magnifying-glass`, `lifebuoy` → `life-ring`, `play` → `play`, `code-bracket` → `code`. For Lucide, the names are usually the closer match: `cpu`, `arrow-right-left`, `file-search-2`, `life-buoy`.
+3. **Or change the library** by setting `"icons": { "library": "lucide" }` in `docs.json`, but only if you intend to use Lucide everywhere on the site. Mixing libraries page-by-page leads to inconsistent visual weight.
+4. **Always visually verify** after icon changes — see the validation workflow below.
 
 ### Extract the live styling tokens
 
@@ -196,7 +273,8 @@ Mintlify covers a fixed subset of theming via `docs.json`. Everything beyond tha
 |---|---|
 | Primary brand color (light + dark variants) | `docs.json` → `colors.primary`, `colors.light`, `colors.dark` |
 | Default appearance (light vs dark) | `docs.json` → `appearance.default` |
-| Page background color (light + dark) | `docs.json` → `background` |
+| Page background color — **single tone** (light + dark) | `docs.json` → `background` |
+| Multi-tone background layout (separate page / sidebar / navbar / content colors) | `custom.css` per region — `docs.json` `background` only sets one tone. See [reference.md → Mintlify layout regions and selectors](reference.md) and [reference.md → Multi-tone background layouts](reference.md) for the DOM map and canonical pattern. |
 | Body font family | `docs.json` → `fonts.family` |
 | Site name in navbar | `docs.json` → `name` |
 | Logo files (light/dark) | `docs.json` → `logo.light`, `logo.dark`, `logo.href` |
@@ -216,6 +294,7 @@ Each of these typically costs a round of QA if missed.
 - **Logo subscript or wordmark** — if the source logo has a custom subscript ("Product / Developers"), bake it into the SVG. Don't try to recreate it via custom CSS — fragile and theme-version-dependent.
 - **`colors.light` / `colors.dark`** — these are the **brand color** in each mode, not the page background. Putting `#ffffff` in `colors.light` turns every CTA white.
 - **Font weights** — when `@import`-ing a font, request the weights you actually use (e.g. `400,500,600,700`). Missing weights silently fall back to the nearest available, producing inconsistent heading thickness.
+- **Single-tone backgrounds when the source is multi-tone** — if the source site uses different colors for the page chrome, the sidebar panel, the navbar, and the main content (very common: grey page / light-grey sidebar / white content), setting only `body { background: ... }` paints everything one color because Mintlify's regions inherit the body bg by default. Override each region in `custom.css` using the selectors documented in [reference.md → Mintlify layout regions and selectors](reference.md). The most common trap: the sidebar panel is `#sidebar-content`, **not** `#sidebar` — guessing `#sidebar` produces a styled-but-still-grey sidebar that passes a quick visual check.
 
 ### Verify the match
 
@@ -279,6 +358,20 @@ After styling changes:
 4. Confirm all navigation targets exist.
 5. Run `mint broken-links` when links changed.
 6. Run `mint a11y` when layout, color, or imagery changed substantially.
+
+### Visual verification gate (chrome / icon / sidebar changes)
+
+For any change that touches docs chrome — sidebar anchor buttons, navbar links, icons in `docs.json`, footer, top CTAs, dropdown structure — JSON validity is **not** a substitute for visual confirmation. Many failure modes (wrong icon library, missing icon, broken anchor, wrong dropdown context) parse as valid JSON and render as a blank slot.
+
+Required gate before declaring chrome work done:
+
+1. Run `mint dev` locally on the affected branch.
+2. Take a screenshot of the affected page in the local preview. The repo includes a Puppeteer setup bundled with `mint`; use it for headless screenshots.
+3. Take a screenshot of the same URL on the live source site (same viewport, same theme).
+4. Diff visually: every anchor button has its icon, the icons match the source glyphs, the sidebar order matches, and the hover/focus states are intact.
+5. Repeat in dark mode if the site supports it.
+
+Do not declare an icon, anchor, or sidebar change done based on JSON validation alone. The most common silent failure is a Lucide icon name under a Font Awesome library config — the anchor button renders, the icon is blank, and the JSON is perfectly valid.
 
 ## Default response behavior
 

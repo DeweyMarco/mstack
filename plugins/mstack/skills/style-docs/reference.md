@@ -34,6 +34,130 @@ Prefer site-wide settings over one-off page styling:
 - `icons.library`
 - `background.decoration`, `background.color`, `background.image`
 
+### Icon library (Font Awesome by default)
+
+`docs.json` `icon` fields — anchors, cards, frontmatter — default to **Font Awesome**, not Lucide. If `icons.library` is unset, every icon name in the file must be a valid Font Awesome icon. Lucide names like `cpu`, `arrow-right-left`, `file-search-2`, `life-buoy` will silently fail under the default config: the anchor button renders, the icon slot is blank, and the JSON validates fine.
+
+Two options:
+
+1. **Stay on Font Awesome (default).** Map source heroicons / Lucide names to Font Awesome equivalents.
+2. **Switch the whole site to Lucide** by setting `"icons": { "library": "lucide" }` in `docs.json`. Only do this if you want Lucide everywhere — mixing libraries page by page produces inconsistent visual weight.
+
+Common heroicon → library mappings (verified rendering):
+
+| Source heroicon | Font Awesome | Lucide |
+|---|---|---|
+| `cpu-chip-16-solid` | `microchip` | `cpu` |
+| `arrows-right-left-16-solid` | `arrow-right-arrow-left` | `arrow-right-left` |
+| `document-magnifying-glass` | `file-magnifying-glass` | `file-search-2` |
+| `code-bracket-16-solid` | `code` | `code` |
+| `lifebuoy-solid` | `life-ring` | `life-buoy` |
+| `play-16-solid` | `play` | `play` |
+
+Always extract the source icon name from the rendered HTML on the live site (search the DOM for the visible icon class), not by guessing from the label. Then map deterministically against the table above and verify visually with `mint dev` + screenshots before declaring done.
+
+### Mintlify layout regions and selectors
+
+Mintlify renders every page into a small, stable set of layout regions. Most styling tasks that target chrome (backgrounds, borders, padding around the sidebar / navbar / content) need to pick the right region selector — guessing wastes an iteration.
+
+| Region | Stable selector(s) | Notes |
+|---|---|---|
+| Outer page (everything behind the chrome) | `body`, `html` | Default Mintlify body bg cascades to every region that doesn't override it |
+| Top navbar | `#navbar`, `header#navbar`, `header.sticky` | Includes search and right-side links |
+| Left sidebar panel (page nav) | `#sidebar-content` | **Not `#sidebar`.** `#sidebar` is the wrapper; `#sidebar-content` is the painted panel. Targeting `#sidebar` alone leaves the panel showing the body bg through it |
+| Main content area (article body) | `#content-area`, `#content-container`, `main > article` | The white "page" the user reads |
+| Right-hand "On this page" TOC | `#table-of-contents`, `aside#toc` | Often inherits the content bg |
+| Footer | `footer`, `#footer` | |
+
+Confirm the live DOM in the running `mint dev` preview before targeting these — Mintlify occasionally renames internals across major versions. Use the browser inspector or a Playwright/Puppeteer one-liner that prints `document.querySelector('#sidebar-content')` to verify before writing CSS.
+
+### Multi-tone background layouts
+
+Many docs sites use a layered background palette — typically a medium grey for the page chrome, a light grey for the sidebar and/or navbar, and white for the main content. `docs.json` `background` sets exactly **one** tone (the body), and Mintlify's default CSS lets the sidebar, navbar, and content inherit it. Setting `background` alone produces a flat, monotone preview that does not match a multi-tone source.
+
+To match a multi-tone source, define one CSS variable per tone on `:root`, then override each region with its stable selector:
+
+```css
+:root {
+  --pw-page-bg:    #e5e5e5;  /* outer page chrome */
+  --pw-panel-bg:   #f2f2f2;  /* sidebar / navbar panel */
+  --pw-content-bg: #ffffff;  /* article body */
+}
+
+html, body { background-color: var(--pw-page-bg) !important; }
+
+#navbar,
+header#navbar,
+header.sticky {
+  background-color: var(--pw-content-bg) !important;
+}
+
+#sidebar-content {
+  background-color: var(--pw-panel-bg) !important;
+}
+
+#content-area,
+#content-container,
+main > article {
+  background-color: var(--pw-content-bg) !important;
+}
+
+html.dark,
+html.dark body { background-color: #0b1220 !important; }
+html.dark #navbar,
+html.dark #sidebar-content,
+html.dark #content-area { background-color: #0f172a !important; }
+```
+
+Notes:
+
+- Pull each tone directly from the live source (`curl ... | grep background-color` or browser inspector). Do not eyeball.
+- `#sidebar-content`, not `#sidebar` — see the layout-regions table above. This is the single most common reason a multi-tone fix lands but the sidebar still looks wrong on first preview.
+- Always pair light-mode rules with dark-mode equivalents (`html.dark` selectors) so the layering reads correctly when the user toggles theme.
+- Verify with `mint dev` + a screenshot in both modes before declaring done — see the validation workflow in `SKILL.md`.
+
+### Per-dropdown sidebar anchors
+
+Mintlify navigation has a strict nesting rule: **each navigation element can contain one type of child element at each level**. A dropdown can have either `anchors` *or* `groups` / `tabs` directly underneath it, not both at the same level.
+
+This matters when the source site shows section-specific sidebar buttons (e.g. Framework pages show `Developer Guide`, `Connectors`, `LLM Tooling`, `API Docs`, `Get Help`; Templates pages show `RAG Templates`, `ETL Templates`, `Run a Template`, `Get Help`). Putting these in `navigation.global.anchors` is wrong — they will appear in every section.
+
+Pattern: give each dropdown its own `anchors` array, and wrap the existing content under a single container anchor inside the same dropdown. This satisfies the "one type of child per level" rule.
+
+```json
+{
+  "navigation": {
+    "dropdowns": [
+      {
+        "dropdown": "Pathway Templates",
+        "anchors": [
+          { "anchor": "RAG Templates",   "icon": "file-magnifying-glass", "href": "/developers/templates#rag-templates" },
+          { "anchor": "ETL Templates",   "icon": "microchip",             "href": "/developers/templates#live-data-pipeline" },
+          { "anchor": "Run a Template",  "icon": "play",                  "href": "/developers/templates/run-a-template" },
+          { "anchor": "Get Help",        "icon": "life-ring",             "href": "/developers/user-guide/development/get-help" },
+          {
+            "anchor": "Templates",
+            "groups": [
+              { "group": "Getting Started", "pages": ["..."] },
+              { "group": "YAML Snippets",   "pages": ["..."] }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The four link-button anchors sit at the top of the sidebar; the wrapping `Templates` anchor carries the actual page navigation underneath. Remove `navigation.global.anchors` once each dropdown has its own anchor set, otherwise the global anchors stack on top of the per-dropdown ones.
+
+Verify after editing:
+
+- JSON parses with `cat docs.json | python3 -m json.tool` (or equivalent).
+- Each dropdown shows its own anchors and only its own anchors when navigated to.
+- Icons render — see the icon library section above.
+- Internal `href`s resolve to real pages (`mint broken-links`).
+
 ### Custom styling cautions
 
 - Tailwind utility classes work well for most layout and spacing needs.
