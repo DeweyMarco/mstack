@@ -357,6 +357,8 @@ The rule for every frontmatter field:
 
 Specifically for `description`: only set it when the source page has explicit subtitle / lead text rendered under the H1. Otherwise leave `description` out entirely. Empty SEO `<meta description>` is acceptable; visible subtitle text the source doesn't have is not. See [reference.md → Frontmatter renders visibly](reference.md). `/preview-qa` Gate 2 audits this against the live source.
 
+**Site root `index.mdx` is not a sidebar entry.** Mintlify already serves `index.mdx` at `/` and the navbar logo links there — it does not need (and should not have) an entry in any `docs.json` sidebar group. The recurring defect: `index.mdx` listed inside a "Getting Started" group's `pages` while `index.mdx` carries `sidebarTitle: "Home"` and the next page (`getting-started.mdx`) has `title: "Overview"`. The sidebar then shows `Home` *and* `Overview` stacked at the top, neither matching the source. The fix is one line: drop `"index"` from the group. See [reference.md → Site root `index.mdx` and the sidebar](reference.md). This is also the one intentional exception to the `/preview-qa` Gate 1 "no orphan MDX" rule — the homepage is allowed to live outside `docs.json` navigation by design.
+
 ### Browser tab `<title>` parity
 
 The browser tab title is a parity dimension that sits outside the visible chrome and is the easiest source-mirror gap to miss. It does not surface in `mint validate`, it is not part of the sidebar audit, and the user only sees it in their tab strip — so it lives or dies on a deliberate check.
@@ -428,7 +430,7 @@ Mintlify covers a fixed subset of theming via `docs.json`. Everything beyond tha
 |---|---|
 | Primary brand color (light + dark variants) | `docs.json` → `colors.primary`, `colors.light`, `colors.dark` |
 | Default appearance (light vs dark) | `docs.json` → `appearance.default` |
-| Page background color — **single tone** (light + dark) | `docs.json` → `background` |
+| Page background color — **single tone** (light + dark) | `docs.json` → `background.color`. **Do not** combine with `background.decoration` unless the source has a matching decorative pattern — `decoration` ignores `color` and tints the page with `colors.primary`. See [reference.md → Background `decoration` is tinted by `colors.primary`](reference.md). |
 | Multi-tone background layout (separate page / sidebar / navbar / content colors) | `custom.css` per region — `docs.json` `background` only sets one tone. See [reference.md → Mintlify layout regions and selectors](reference.md) and [reference.md → Multi-tone background layouts](reference.md) for the DOM map and canonical pattern. |
 | Body font family | `docs.json` → `fonts.family` |
 | Site name in navbar | `docs.json` → `name` |
@@ -450,6 +452,7 @@ Each of these typically costs a round of QA if missed.
 - **`colors.light` / `colors.dark`** — these are the **brand color** in each mode, not the page background. Putting `#ffffff` in `colors.light` turns every CTA white.
 - **Font weights** — when `@import`-ing a font, request the weights you actually use (e.g. `400,500,600,700`). Missing weights silently fall back to the nearest available, producing inconsistent heading thickness.
 - **Single-tone backgrounds when the source is multi-tone** — if the source site uses different colors for the page chrome, the sidebar panel, the navbar, and the main content (very common: grey page / light-grey sidebar / white content), setting only `body { background: ... }` paints everything one color because Mintlify's regions inherit the body bg by default. Override each region in `custom.css` using the selectors documented in [reference.md → Mintlify layout regions and selectors](reference.md). The most common trap: the sidebar panel is `#sidebar-content`, **not** `#sidebar` — guessing `#sidebar` produces a styled-but-still-grey sidebar that passes a quick visual check.
+- **Stray `background.decoration` tinting a plain source** — `docs.json` `background.decoration` (`"windows"`, `"grid"`, `"gradient"`) draws a pattern derived from `colors.primary`. When the source is a flat solid color (most often `#ffffff`), the decoration paints a faint tint of the brand color over every region — a purple primary produces a lavender cast (`#f0e9f3`-ish), a teal primary produces a pale teal cast, etc. JSON validates, the decoration renders, and every preview pixel is subtly wrong. Detect by pixel-sampling the source body bg at four points; if uniform, drop the `background` block entirely (Mintlify defaults to white) or set `background.color.light/dark` explicitly — never alongside `decoration`. See [reference.md → Background `decoration` is tinted by `colors.primary`](reference.md).
 
 ### Verify the match
 
