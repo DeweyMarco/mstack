@@ -269,6 +269,49 @@ When mirroring a section that has its own sidebar chrome:
 4. **Check collapsibility behavior on the source.** Look for chevrons / carets next to each section header in the source sidebar. If the source's sections collapse/expand independently and the preview shows everything fully expanded with no toggles, the preview is missing a collapsibility pass. Apply the right pattern from the *Mintlify collapsible navigation guardrail* above (Pattern A for one long section, Pattern B / wrapper-group demotion for a whole tab). Toggle a section open and closed on the source to confirm before mirroring — some sites use static section headers that visually resemble chevrons but aren't interactive.
 5. **Verify visually after editing.** Open the preview in `mint dev` and confirm each section shows the right anchor buttons in the right order with the right icons, and that section toggles match the source. JSON validity is not enough — see the validation workflow below.
 
+### Top horizontal bar — one row, one config surface
+
+If the source paints a single horizontal row of links above (or below) its navbar — `Guides | API Explorer | Discussions | News | Status | Tech Blog`, etc. — every item in that row must live in **one** Mintlify config surface: `navigation.tabs`. Splitting the row across `navigation.tabs`, `navbar.links`, and `navigation.global.anchors` is the most common cause of "horizontal bar doesn't match" defects, because each of those surfaces renders in a different region of the UI:
+
+| `docs.json` surface | Where it renders | Use for |
+|---|---|---|
+| `navigation.tabs` | The inline horizontal tab row under the navbar | Every item the source shows in its single horizontal bar — internal pages and external destinations alike |
+| `navbar.links` | Top-right of the navbar, next to the primary CTA | Right-side utility links the source actually anchors right (sign-in, contact, login on small sites that don't have a CTA button) |
+| `navbar.primary` | The right-most CTA button in the navbar | The single primary action (Log In, Get a demo, Sign up) |
+| `navigation.global.anchors` | Persistent anchor rail at the **top of the sidebar** (left side, below the tab row) | Only when the source shows a sidebar-anchor rail — never as a fallback for "this item didn't fit in tabs" |
+
+The trap is reaching for `navbar.links` whenever an item is external (Status pages, Discourse forums, blogs hosted off-site) and reaching for `navigation.global.anchors` whenever an item has an icon. Both produce a fragmented preview where the source's one row becomes three separate UI surfaces, often with the same items registered twice and rendering twice.
+
+**`navigation.tabs` accepts `href`.** External destinations belong in `tabs` with `href`, not in `navbar.links`:
+
+```json
+{
+  "navigation": {
+    "tabs": [
+      { "tab": "Guides", "groups": [/* ... */] },
+      { "tab": "API Explorer", "groups": [/* ... */] },
+      { "tab": "Discussions", "href": "https://discuss.example.com" },
+      { "tab": "News and Updates", "groups": [/* ... */] },
+      { "tab": "Status", "href": "https://status.example.com" },
+      { "tab": "Tech Blog", "href": "https://blog.example.com" }
+    ]
+  },
+  "navbar": {
+    "primary": { "type": "button", "label": "Log In", "href": "https://app.example.com/login" }
+  }
+}
+```
+
+Workflow when mirroring a source navbar:
+
+1. **Open the source navbar and count items left-to-right.** Note for each item: internal page or external URL, plain link or button.
+2. **Emit them into `navigation.tabs` in that exact order.** Internal items use the standard `{ "tab": "...", "groups": [...] }` shape; external items use `{ "tab": "...", "href": "..." }`.
+3. **Reserve `navbar.links` and `navbar.primary` for items the source actually anchors to the right side of the navbar** (utility links, CTA buttons). If the source has no right-side links, `navbar.links` should be absent entirely.
+4. **Reserve `navigation.global.anchors` for sidebar-top anchor rails.** If the source has no sidebar anchor rail, `navigation.global.anchors` should be absent entirely. Do not treat it as a "leftover" surface for items that didn't fit in `tabs`.
+5. **Audit for duplicates after editing.** No item should be registered in more than one of `tabs` / `navbar.links` / `global.anchors`.
+
+This applies in both directions — promoting items into `tabs` to fix a fragmented row, and removing items from `tabs` when the source shows them on the right side or in the sidebar rail. The check is always the same: open the source, identify each visible region, map each item to exactly one surface.
+
 ### Logo and brand mark parity
 
 The navbar logo is a separate chrome dimension that fails in characteristic ways. The single biggest trap: the source's top-left mark is rarely *just* a wordmark. It is usually composed — wordmark plus a subtitle ("Developers", "Docs", "for Teams"), or wordmark plus a version badge, or wordmark plus a thin tagline. Pulling only the wordmark SVG from the source's static assets gives you a logo that looks "close" but is missing visible content.
