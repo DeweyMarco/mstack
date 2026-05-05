@@ -80,6 +80,11 @@ Run **per dropdown and per tab**, not only globally. Many source sites show diff
   - If the source shows no tab-button row above the page (e.g. Pathway), the preview's `docs.json` must not use `tabs` — flatten to sibling `groups`.
   
   Both directions are defects. Fetch the source page being mirrored, look at what is rendered above the sidebar/content area, and match. See `style-docs/SKILL.md` → *Tabs vs sibling groups — match the source toggle* and `style-docs/reference.md` → *Flattening `tabs` to sibling `groups`*.
+- [ ] **Per-page sidebar parity (no stacked sidebars).** For each preview page that mirrors a source URL, list every entry rendered in its sidebar — anchors, wrapping-anchor labels, group labels, nested-group labels, and page links. Compare against the rendered sidebar on the same URL on the source. The two lists must match. Two failure modes to catch, both of which pass JSON validation:
+  - **Extra entries from a different top-level source section** ("stacked sidebars") — most often caused by collapsing two source sections (e.g. `User Guide` and `API docs`) into sibling `groups` under one wrapping `anchor`, which makes both render together on every page in that anchor.
+  - **Visible group / wrapping-anchor labels the source does not show** — e.g. a `"User Guide"` group label introduced as scaffolding when the source's sidebar starts directly at `Introduction`.
+  
+  The fix is structural, not cosmetic — see the failure-routing table below.
 
 ### Gate 4 — Sidebar collapsibility parity
 
@@ -158,6 +163,7 @@ If any gate is FAIL, list the specific defects and fix them before re-running. D
 | 3 | Blank icon slots | Match library to source per `style-docs/reference.md` "Icon library" |
 | 3 | Tab toggle present but source has none | Flatten `tabs` to sibling `groups` per `style-docs/reference.md` "Flattening tabs to sibling groups" |
 | 3 | Tab toggle missing but source has one | Promote sibling `groups` to `tabs` (model the tabs on the source's top-of-page sections) per `style-docs/SKILL.md` "Restructuring a large, flat navigation" step 1 |
+| 3 | Per-page sidebar shows entries (group labels, wrapping-anchor labels, or pages) the source's same-URL sidebar doesn't show | Promote each leaking source section to its own sibling `anchor` (or `tab` if the source has a top-of-page toggle). Drop any wrapper `anchor` whose label isn't on the source so its `groups` sit directly under the dropdown. See `style-docs/reference.md` → "Per-dropdown sidebar anchors". Re-run `/preview-qa` from Gate 1 — this restructure touches `docs.json` and can regress collapsibility (Gate 4) and chrome (Gate 3) |
 | 4 | Sections not collapsible when source is | Apply wrapper-group demotion per `style-docs/reference.md` "Wrapper-group demotion for collapsible sections" |
 | 5 | Monotone preview against multi-tone source | Per-region `custom.css` per `style-docs/reference.md` "Multi-tone background layouts" |
 | 6 | Visual mismatch not surfaced by JSON validation | Re-fetch source token / icon name / selector; do not adjust by eye |
