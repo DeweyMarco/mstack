@@ -14,12 +14,26 @@
 
 For migrations whose goal is to match an existing site, every top-level chrome element in `docs.json` must mirror what the source actually shows. Verify each of these against the rendered source:
 
-- `navigation.global.anchors` — count and labels must match the source's top-nav anchors. If the source has 5, you have 5; not 6, not 4.
-- `navbar.links` — top-nav text links (separate from anchors, when the source uses both).
-- `navbar.primary` — the right-side CTA button. Absent if the source has no CTA.
+- `navigation.tabs` — every item the source paints in its single horizontal row above (or below) the navbar belongs here, in source-visual order, left-to-right. External destinations (Status pages, off-site forums, blogs) use `{ "tab": "...", "href": "..." }` — do not push them to `navbar.links` just because they leave the docs site. See *One visible horizontal row = one config surface* below.
+- `navigation.global.anchors` — only present when the source shows a persistent **sidebar** anchor rail (icon + label list at the top of the sidebar). If absent on the source, the field should be absent in `docs.json`. Do not use this surface as a fallback for items that didn't fit in `navigation.tabs`.
+- `navbar.links` — only the right-side utility text links the source actually anchors to the right of the navbar (e.g. sign-in, contact). Items the source shows in its inline horizontal row do not belong here even when they are external.
+- `navbar.primary` — the single right-side CTA button. Absent if the source has no CTA.
 - `footer.socials` and `footer.links` — only what appears on the source footer. Default Twitter/GitHub socials from the starter are the most common parity miss.
 - `seo.metatags` — mirror the source's meta description and OG tags, not Mintlify's defaults.
 - **Default mode is remove, not add.** When unsure whether the source has a feature, delete it from `docs.json` and re-add only after confirming on the live site. Extras survive every other QA pass because they look "normal" — the only way to catch them is to audit each chrome field against a fresh `curl` of the source.
+
+#### One visible horizontal row = one config surface
+
+The most common chrome defect on first-pass migrations is splitting the source's single horizontal nav row across multiple surfaces in `docs.json`. The source paints six items in one row, the migration emits three in `navigation.tabs`, two in `navbar.links`, and one in `navigation.global.anchors`, and the preview's "horizontal bar" no longer matches the source's. JSON validates; chrome doesn't.
+
+Rule for navbar generation:
+
+1. Inspect the source navbar and identify each visible region — the inline horizontal row, the right-side utility links, the right-side CTA, the sidebar anchor rail (if any).
+2. Map each item to exactly one `docs.json` surface using the table in `style-docs/SKILL.md` → *Top horizontal bar — one row, one config surface*.
+3. For the inline horizontal row: emit every item into `navigation.tabs` in source-visual order, using `href` on the tab entry for external destinations rather than rerouting them to `navbar.links`.
+4. After emitting, audit for duplicates: no item should appear in more than one of `navigation.tabs`, `navbar.links`, `navigation.global.anchors`. If the same external link is registered twice, drop it from `navbar.links` / `global.anchors` and keep it in `tabs`.
+
+This is `/preview-qa` Gate 3's "Top horizontal-bar single-row parity" check — generating the right shape upfront avoids the post-hoc cleanup.
 
 For OpenAPI-backed sections, reference the spec directly on the group. Do not list auto-generated endpoint pages manually:
 

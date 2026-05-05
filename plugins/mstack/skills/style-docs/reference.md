@@ -116,6 +116,47 @@ Notes:
 - Always pair light-mode rules with dark-mode equivalents (`html.dark` selectors) so the layering reads correctly when the user toggles theme.
 - Verify with `mint dev` + a screenshot in both modes before declaring done — see the validation workflow in `SKILL.md`.
 
+### Background `decoration` is tinted by `colors.primary`
+
+`docs.json` `background.decoration` (`"windows"`, `"grid"`, `"gradient"`) draws a decorative pattern over the page chrome. All three options derive their color from `colors.primary` — there is no separate decoration-color knob. The result is a faint tint of the brand color on every region that paints the body bg.
+
+This is correct when the source has a matching decorative pattern, and a defect everywhere else. Most source sites are flat — a single solid color, almost always white in light mode and near-black in dark — so a default `"windows"` decoration produces a preview that "looks Mintlify-y" but does not match the source.
+
+Canonical failure (Achievers port): the source's [`getting-started`](https://developer.achievers.com/docs/getting-started) sampled `#ffffff` across the entire viewport. The preview had:
+
+```json
+"background": {
+  "decoration": "windows"
+}
+```
+
+with `"colors": { "primary": "#6c2c8c" }` (purple), which painted a subtle lavender pattern (`#f0e9f3` / `#f8f5f9`) over the whole page. `mint validate` clean, decoration renders, every pixel is the wrong color.
+
+How to detect:
+
+- Pixel-sample the source body bg at four points (header, sidebar gutter, content area, right margin) at the same viewport as the preview. Use a browser eyedropper or `playwright.screenshot()` + a pixel reader.
+- Repeat on the running preview at the same URL.
+- If the source samples are uniform (e.g. all `#ffffff`) and any preview sample is even one byte off, suspect `background.decoration`.
+- Grep `docs.json` for `"decoration"`. If present and the source is flat, the decoration is the cause.
+
+How to fix:
+
+- **Source is plain white (or any single solid color):** delete the `background` block entirely. Mintlify defaults to white in light mode. If you want to be explicit (e.g. lock white in dark mode, or guard against a future theme change), use `color` only — never alongside `decoration`:
+
+  ```json
+  "background": {
+    "color": {
+      "light": "#ffffff",
+      "dark": "#ffffff"
+    }
+  }
+  ```
+
+- **Source has a multi-tone layout but no decoration:** still drop `decoration`; use the multi-tone `custom.css` pattern from *Multi-tone background layouts* above.
+- **Source has a decorative pattern that genuinely matches a Mintlify decoration:** keep `decoration`, but only after side-by-side screenshot confirmation. Do not assume a decoration is "close enough."
+
+Rule of thumb: if you did not deliberately choose a decoration to match an observed source pattern, the `background` block should be omitted from `docs.json`.
+
 ### Logo composition and sizing
 
 Mintlify renders the navbar logo as a single `<img class="nav-logo">` sized at `h-6` (24px tall) by default, sourced from `docs.json` `logo.light` / `logo.dark`. There is **no** native field for "logo plus subtitle", "logo plus badge", or "logo plus tagline" — `logo.href` is just the link target, not a sibling element. So when the source's navbar mark is composed (a wordmark plus stacked subtitle, an inline badge, etc.), the only supported way to mirror it is to bake the composition into a single SVG and adjust the navbar logo height in `custom.css`.
@@ -266,6 +307,44 @@ The supported paths for runtime behavior, in order of preference:
 
 Before reaching for any of the three, confirm with the user that the requirement actually needs runtime JS. Most chrome / navbar / sidebar customization needs do **not** — they have native config solutions that the next two sections cover.
 
+### Site root `index.mdx` and the sidebar
+
+`index.mdx` is the site homepage — Mintlify serves it at `/` and the navbar logo links there by default. It is **already reachable without any sidebar entry**. The recurring trap is treating it like a normal docs page and adding `"index"` (or whatever the homepage slug is) to a sidebar group's `pages` array. That produces a duplicate sidebar entry whose label depends on the homepage's frontmatter:
+
+- If `index.mdx` has `sidebarTitle: "Home"` and the next page in the same group is `getting-started.mdx` (whose `title` is "Overview"), the sidebar shows `Home` *and* `Overview` stacked at the top of Getting Started — neither matches the source, which usually shows just one entry.
+- If `index.mdx` has no `sidebarTitle` and its `title` happens to match the next page's title, the sidebar shows two identically-labelled entries that both link to different URLs. Reviewers read this as a bug.
+
+The fix is one line in `docs.json`: drop `"index"` from any sidebar `pages` array. The homepage stays at `/` (logo click + direct URL still work), and the sidebar's first entry under each group becomes whatever the source actually shows.
+
+```json
+// Before — duplicate "Home" / "Overview" at the top of Getting Started
+{
+  "group": "Getting Started",
+  "pages": [
+    "index",
+    "docs/getting-started",
+    "docs/authentication"
+  ]
+}
+
+// After — sidebar matches source
+{
+  "group": "Getting Started",
+  "pages": [
+    "docs/getting-started",
+    "docs/authentication"
+  ]
+}
+```
+
+Notes:
+
+- This is the one **intentional exception** to the `/preview-qa` Gate 1 "no orphan MDX" rule. `index.mdx` (and any other root-level homepage variant — `home.mdx`, `welcome.mdx` — that the site uses as the `/` destination) is allowed to live outside `docs.json` navigation by design.
+- If the source site *does* show a "Home" entry in the sidebar (some ReadMe.io and GitBook themes do this), keep `index` in the group but verify the label matches the source — usually `sidebarTitle: "Home"` on `index.mdx` plus dropping any other "Overview" / "Welcome" page that would duplicate it.
+- The same trap applies to landing-page slugs introduced by `/create-landing-page` (e.g. `developers/index.mdx` for a dropdown root). If the dropdown's logo or first tab already lands the user on that page, do not also list it as a sidebar entry inside the dropdown's groups.
+
+Verifying: load the preview in `mint dev`, click each tab/dropdown, and check the first one or two sidebar entries against the source. If you see a "Home" or duplicate-label entry the source doesn't have, look in `docs.json` for `"index"` (or your site's root slug) inside a sidebar group and remove it.
+
 ### Navbar and external sidebar links
 
 These are the two ask patterns that most often tempt an agent into writing custom JS. Both have native Mintlify solutions.
@@ -318,6 +397,61 @@ Reference the stub as a **string slug** in `docs.json` `pages`, not as a nested 
 ```
 
 The stub MDX file's body content is irrelevant — Mintlify renders the external link before any user can read the page. Keep the file empty or add a single line explaining why it exists.
+
+**Sidebar entries that jump to another *internal* page (not the page's own slug):**
+
+The same `url:` frontmatter pattern works for internal targets — the source site's "API Explorer" sidebar entry that jumps to the first auto-generated reference page, the "Quickstart shortcut" that lands on a deep page in another tab, etc. Mintlify treats `url:` as the link href verbatim: external URLs get `target="_blank"` and the external-link arrow, internal paths render as a plain in-app link.
+
+```mdx
+---
+title: "API Explorer"
+sidebarTitle: "API Explorer"
+url: "/api-reference/achievements/achievements"
+---
+```
+
+When to prefer `url:` frontmatter vs `docs.json` `redirects`:
+
+| Lever | Covers | Trade-offs |
+|---|---|---|
+| `url:` frontmatter on a stub MDX | Sidebar-click navigation only | Cleanest. The stub URL itself remains reachable; if a user types or bookmarks `/docs/api-explorer`, they land on an empty stub page |
+| `docs.json` `redirects` rule + stub MDX | Both sidebar clicks **and** direct URL hits | More thorough. Required when the stub URL might be deep-linked (legacy bookmarks, search engine results, hand-typed URLs from migration). The `redirects` block runs server-side so the stub page is never rendered |
+
+For migrations from ReadMe.io, GitBook, or any platform whose URLs are likely indexed or bookmarked, prefer the `redirects` approach so old links don't dead-end on a blank stub. Example for the Achievers migration that surfaced this pattern:
+
+```json
+{
+  "redirects": [
+    { "source": "/docs/api-explorer", "destination": "/api-reference/achievements/achievements" },
+    { "source": "/docs/api-status",   "destination": "https://status.example.com" }
+  ]
+}
+```
+
+The stub MDX still has to exist (Mintlify groups only accept real page slug strings — see *External `href` is not allowed inside a group's `pages` array* below), but the redirect intercepts navigation before the stub renders. Add a `<Card>` or one-line `>` blockquote in the stub body as a graceful fallback in case the redirect ever misfires (e.g. local-dev caching).
+
+### External `href` is not allowed inside a group's `pages` array
+
+Mintlify's schema is strict about what can live inside a sidebar group's `pages` array: **page slug strings or nested group objects only.** External `href` entries — the `{ "anchor": "...", "href": "..." }` shape that works inside `tabs`, `dropdowns`, `menus`, `navbar.links`, `navigation.global.anchors`, and `footer` — are rejected. The exact failure is silent for some Mintlify versions (the entry is dropped from the rendered sidebar) and a parse error for others; either way the link does not appear.
+
+```json
+// INVALID — Mintlify drops or rejects this entry
+{
+  "group": "Development",
+  "pages": [
+    "docs/api-changelog",
+    { "anchor": "API Status", "href": "https://status.example.com" }
+  ]
+}
+```
+
+The supported workarounds, in order of cleanliness:
+
+1. **Promote to a `tab`, `dropdown` anchor, or `navbar` link.** External links are first-class citizens at every navigation level *except* group-`pages`. If the source shows the link in a top horizontal bar, route it to `navigation.tabs` (with `href`) per *Top horizontal bar — one row, one config surface* in `SKILL.md`. If it belongs at the right of the navbar, route it to `navbar.links` or `navbar.primary`. Use sidebar workarounds only when the source actually shows the link inside a sidebar group.
+2. **Stub MDX + `url:` frontmatter** — see *External link in the sidebar* above. Cleanest for sidebar entries; covers sidebar clicks but not direct URL hits.
+3. **Stub MDX + `docs.json` `redirects`** — see *Sidebar entries that jump to another internal page* above. Covers both sidebar clicks and direct URL hits; required when migrating from a platform whose URLs are likely indexed or bookmarked.
+
+All three options keep `docs.json` schema-valid. The trap is iterating through invalid `{ "anchor", "href" }` shapes inside `pages` because the failure mode varies by Mintlify version and the schema error message is not always actionable. Verify the schema once at [mintlify.com/docs.json](https://mintlify.com/docs.json) instead of guessing.
 
 ### Live-ish data via build-time updater
 
