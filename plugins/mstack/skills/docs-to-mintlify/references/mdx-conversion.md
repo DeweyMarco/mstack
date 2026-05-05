@@ -52,6 +52,10 @@ For every page in the discovered inventory:
 - Keep frontmatter values plain text. Never put JSX/HTML tags in frontmatter fields.
 - Pair and scope callouts correctly: `<Info>...</Info>`, `<Warning>...</Warning>`, `<Tip>...</Tip>`, `<Note>...</Note>`.
 - Prefer whole-block transforms over piecemeal tag insertion. If source structure is ambiguous, leave it as plain markdown instead of risking broken JSX.
+- Generated transformers must preserve block boundaries. Never emit a fenced code block or Mintlify component opening/closing tag on the same line as prose, a list item, or another component tag. Normalize these invalid forms before writing files:
+  - `1. Do this. <Info>` -> list item line, blank line, `<Info>` on its own line.
+  - `Text before ``` ...` -> text line, blank line, fenced block on its own lines.
+  - `</Note> The next sentence` -> `</Note>` on its own line, blank line, next sentence.
 - Do not close a callout before its intended content ends.
 - Keep fenced code blocks balanced.
 - Do not leave raw JSON, shell, or language samples outside fences where MDX can parse them as JSX.
