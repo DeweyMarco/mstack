@@ -56,6 +56,42 @@ Common heroicon → library mappings (verified rendering):
 
 Always extract the source icon name from the rendered HTML on the live site (search the DOM for the visible icon class), not by guessing from the label. Then map deterministically against the table above and verify visually with `mint dev` + screenshots before declaring done.
 
+### Brand color ramp: `primary` / `light` / `dark` semantics
+
+`docs.json` `colors` exposes three brand tokens. Their names suggest "the color" / "its light variant" / "its dark variant", but in practice they map to specific *render contexts* — and getting the semantics wrong produces a preview that looks fine in light mode and quietly muddy or off-hue in dark mode.
+
+| Token | Rendered as | Constraint |
+|---|---|---|
+| `colors.primary` | Light-mode emphasis: links, active sidebar item, anchor underlines, code-block accents, headings hover | The on-brand main color. |
+| `colors.light` | **Dark-mode emphasis** — same surfaces as `primary`, but on dark backgrounds | Must be **lighter / brighter** than `primary` so it pops against the dark canvas. |
+| `colors.dark` | Buttons, hover states, pressed states in **both** modes | Must be **darker** than `primary`. |
+
+Two failure modes are routine and silent:
+
+1. **`colors.light` is in a different hue family from `primary` / `dark`.** The mode toggle then visibly shifts the brand hue (e.g. green primary becomes teal in dark mode). The most common cause is auto-generating `colors.light` from a "lighter shade" picker that drifts hue alongside lightness — most pickers default to HSL or CIE, both of which can move hue when you increase the lightness slider. Pin all three tokens to the same hue (within ~5°) before shipping.
+2. **`colors.light` is darker than `primary`.** Reads as a defect: dark mode emphasis loses contrast against the dark background, so links and the active sidebar item look "muddy" instead of accent-bright. This usually happens when an agent reaches for `colors.light` thinking it means "the color used in light mode" rather than "the lighter variant used *for* dark mode emphasis".
+
+How to build the ramp deterministically:
+
+1. Fix `colors.primary` to the brand's signature value (whatever the marketing site / brand kit uses).
+2. Compute `colors.light` by holding `primary`'s hue and saturation constant and increasing lightness by ~15–20% (in HSL space) so the result is visibly brighter on a dark background. For #00C805 (Robinhood green), `#4FE055` is the conservative on-brand choice; `#5BFF5B` is a punchier alternative; `#3DEB7A` pulls slightly toward mint. The right answer depends on how saturated the brand wants the dark-mode accent to feel, but all three preserve hue.
+3. Compute `colors.dark` by holding `primary`'s hue and saturation constant and decreasing lightness by ~5–10%. For #00C805, `#00A904` works.
+4. Verify by sampling all three swatches on a hue wheel and confirming they sit within ~5° of each other. Mint vs. pure green is a ~36° shift — a much bigger gap than this rule allows.
+
+| Brand mode | Surfaces using each token |
+|---|---|
+| Light | Body bg = white-ish; emphasis = `primary`; buttons / hover = `dark` |
+| Dark  | Body bg = near-black; emphasis = `light`; buttons / hover = `dark` |
+
+Verification (mandatory after any `colors` change):
+
+- Toggle `mint dev` between light and dark and visually confirm the active sidebar item, links, anchor underlines, and code-block accents all read as the same hue family across both modes.
+- If anything shifts hue when you toggle, `colors.light` is the wrong hue — re-derive it from `primary` per the rule above.
+- If dark-mode accents look muddy / low-contrast, `colors.light` is too dark — bump lightness until it pops against the dark background while staying on hue.
+- If light-mode buttons or hover states look indistinguishable from `primary`, `colors.dark` is too close to `primary` — drop lightness another few points.
+
+This is a `/preview-qa` Gate 5 check (brand color parity) and a `/han-review` non-negotiable (dark-mode polish).
+
 ### Mintlify layout regions and selectors
 
 Mintlify renders every page into a small, stable set of layout regions. Most styling tasks that target chrome (backgrounds, borders, padding around the sidebar / navbar / content) need to pick the right region selector — guessing wastes an iteration.
@@ -344,6 +380,103 @@ Notes:
 - The same trap applies to landing-page slugs introduced by `/create-landing-page` (e.g. `developers/index.mdx` for a dropdown root). If the dropdown's logo or first tab already lands the user on that page, do not also list it as a sidebar entry inside the dropdown's groups.
 
 Verifying: load the preview in `mint dev`, click each tab/dropdown, and check the first one or two sidebar entries against the source. If you see a "Home" or duplicate-label entry the source doesn't have, look in `docs.json` for `"index"` (or your site's root slug) inside a sidebar group and remove it.
+
+### Single-page wrapper groups create duplicate sidebar entries
+
+A sidebar `group` whose `pages` array contains exactly one entry — and whose group label matches that page's `sidebarTitle` (or `title` if `sidebarTitle` is unset) — renders as **two stacked, identically-labelled rows** in the sidebar:
+
+```
+Overview          <- the group header
+  Overview        <- the lone page inside the group
+```
+
+The group header is itself clickable scaffolding, so the user sees `Overview > Overview` and assumes one of them is broken. This is a sibling defect to *Site root `index.mdx` and the sidebar* above: both produce duplicate sidebar entries, both are silent under `mint validate`, and both are fixed by removing one wrapping layer rather than renaming a page.
+
+The trap usually shows up in API reference tabs where the converter wraps a single `introduction.mdx` (or `overview.mdx`) in a one-page group so it can sit next to multi-page sibling groups (`V2 endpoints`, `V1 endpoints`, etc.). The wrapping reads as "every section is a group, for symmetry", but the symmetric fix is wrong here because Mintlify tabs accept `pages` arrays that mix string entries and group objects natively.
+
+**Before — `Overview > Overview` duplicate**
+
+```json
+{
+  "tab": "API reference",
+  "groups": [
+    {
+      "group": "Overview",
+      "pages": ["api-reference/introduction"]
+    },
+    {
+      "group": "V2 endpoints (with fee tiers)",
+      "pages": [/* ... */]
+    },
+    {
+      "group": "V1 endpoints (without fee tiers)",
+      "pages": [/* ... */]
+    }
+  ]
+}
+```
+
+**After — single Overview entry, peer of V2 / V1**
+
+```json
+{
+  "tab": "API reference",
+  "pages": [
+    "api-reference/introduction",
+    {
+      "group": "V2 endpoints (with fee tiers)",
+      "pages": [/* ... */]
+    },
+    {
+      "group": "V1 endpoints (without fee tiers)",
+      "pages": [/* ... */]
+    }
+  ]
+}
+```
+
+Notes:
+
+- Switch the tab from `groups` to `pages`. Tab-level `pages` accepts both string slugs and group objects in the same array — that is the documented way to mix a top-level page with sibling groups.
+- The `introduction.mdx` page's own `sidebarTitle: "Overview"` (or `title: "Overview"` if no sidebar title) becomes the single rendered label. Verify it matches the source's overview / intro label verbatim.
+- If the introduction page also carries an `icon:` in its frontmatter, it now renders next to the sidebar entry — useful for visual peer parity with the V2 / V1 groups when those carry icons. See *Icon hierarchy: top-level only* below for when to keep / drop the icon.
+- The same pattern applies inside `dropdowns` and `anchors`: any single-page wrapping group whose label matches its sole child should be flattened to a string slug entry.
+
+Detection: open `docs.json` and look for any `{ "group": "X", "pages": ["<one slug>"] }` shape. For each match, open the slug's MDX and compare its `sidebarTitle` / `title` to the group label. If they match (case-insensitive), the entry is a duplicate-Overview defect.
+
+This is a `/preview-qa` Gate 3 check.
+
+### Icon hierarchy: top-level only
+
+Mintlify renders a sidebar `icon` next to every `group` header (from `docs.json`) and next to every page entry (from `frontmatter.icon`). When icons are applied at every level — top-level groups, sub-groups inside them, and individual pages — the sidebar becomes visually noisy: the icons stop signaling "this is a major section" and start competing with each other for the reader's attention.
+
+The rule: **icons are reserved for top-level major sections.** Sub-groups and individual pages stay icon-free.
+
+Concretely:
+
+| Sidebar element | Icon? |
+|---|---|
+| Top-level group inside a tab (e.g. `Get started`, `Authentication`, `Concepts`) | Yes — pick an icon that signals the section's purpose. |
+| Top-level entry inside a tab that is a **single page** flattened from a one-page group (e.g. an `Overview` page sitting as a peer of `V2 endpoints` / `V1 endpoints` — see *Single-page wrapper groups create duplicate sidebar entries* above) | Yes — keep the page-level `frontmatter.icon` so the entry reads as a peer of its iconed siblings, not as an orphaned subpage. |
+| Sub-group inside a top-level group (e.g. `Account`, `Market data`, `Trading` inside `V2 endpoints`) | **No** — strip the `icon:` from the sub-group entry in `docs.json`. |
+| Individual page inside a group (e.g. `quickstart.mdx`, `concepts/orders.mdx`) | **No** — strip the `icon:` from the page's MDX frontmatter. |
+
+The visual logic: a top-level group icon tells the user "this is a section". A sub-group or page icon next to it adds nothing — the parent already established the section, and the icon now reads as decorative clutter. The exception is the single-page-peer case: when a flattened single page sits next to iconed group siblings at the same level, dropping its icon leaves it looking orphaned (a label without an icon next to two labels with icons), so it keeps the page-level icon to maintain peer symmetry.
+
+How to apply consistently across an existing site:
+
+1. **Audit `docs.json`** for every `{ "group": "...", "icon": "...", "pages": [...] }`. Categorize each as either top-level (inside a `tab` / `dropdown` / `anchor` directly) or nested (inside another group's `pages`). Strip `icon` from every nested entry.
+2. **Audit MDX frontmatter** for every `icon:` field. For each match, ask: is this page a top-level peer of iconed sibling groups (rare — typically one per tab)? If yes, keep. If no — strip the `icon:` line.
+3. **Re-run `mint dev`** and visually scan the sidebar of each tab. Every top-level row should have an icon; no sub-row should.
+
+The two recurring traps:
+
+- **Auto-conversion adds icons to every entry.** Some converters (and some boilerplate `docs.json` templates) attach icons to every group and page they create. The fix is the audit pass above — converters do not know which entries are "major sections".
+- **The single-page-peer case is missed.** When flattening a single-page wrapper group (per the previous section), the page's own frontmatter `icon` becomes load-bearing for peer symmetry. Don't strip it as part of the icon audit; check sibling levels first.
+
+Verification: open the rendered sidebar in `mint dev` and read the icon column top-to-bottom for each tab. Every iconed row should be a top-level major section; every sub-row should be icon-free. If the icon column has gaps inside a top-level section's children but is dense at the top level, the hierarchy is correct.
+
+This is a `/preview-qa` Gate 3 check.
 
 ### Navbar and external sidebar links
 
