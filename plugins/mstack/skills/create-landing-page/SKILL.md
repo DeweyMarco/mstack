@@ -11,9 +11,10 @@ Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`
 
 1. Read the project's `docs.json` to understand navigation structure, brand colors, and existing page paths.
 2. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
-3. Confirm which docs pages already exist so all card/button `href` values point to real paths.
-4. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
-5. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
+3. If the user provided an original docs/homepage URL, inspect its raw HTML/CSS for visible colors, logo, favicon, hero/background media, and top-level layout before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
+4. Confirm which docs pages already exist so all card/button `href` values point to real paths.
+5. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
+6. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
 
 ## Critical Mintlify Gotchas (read this before writing any JSX)
 
@@ -199,7 +200,7 @@ If a visible piece of text does not appear in the rendered HTML, an element is p
 
 Also confirm `docs.json` has `$schema`, `name`, `colors.primary`, `logo` (light/dark SVGs + `href`), and `favicon`.
 
-## Proven Section Order
+## Section Order
 
 From high-quality Mintlify docs sites (e.g. Miro Developer Platform):
 
@@ -255,12 +256,64 @@ Only build one when the brand's marketing site has a distinctive navbar you are 
 - Use `relative overflow-hidden` on the hero `<section>` for full-bleed backgrounds. Do **not** use the viewport-width breakout hack (`left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen` or `-mx-[50vw] w-screen`) — it causes horizontal overflow and scroll issues.
 - Inner content should still use a max-width container (`max-w-5xl`–`max-w-7xl`), centered (`mx-auto`), with horizontal padding for readability.
 - Two-column grid on desktop, single-column on mobile.
-- Visually distinct background (brand color, gradient, or image/video with overlay).
+- Visually distinct background (source media, brand color, gradient, or image/video with overlay).
+- **Adapt the hero background to both modes** (see "Adaptive hero & CTA backgrounds" below). A permanently dark hero looks great in dark mode but clashes with a light navbar in light mode, and vice versa.
 - `<h1>` heading with responsive sizing (`text-4xl` → `text-6xl`), `font-semibold`/`font-bold`, high-contrast color.
 - `<p>` subtitle below the heading, `text-base`–`text-xl`, max-width constrained.
 - Primary CTA button (brand background, links to quickstart) + secondary CTA button (outline style).
 - Buttons: `rounded-lg`/`rounded-full`, hover transitions, `flex-wrap` + `gap-3`/`gap-4`, actionable text.
 - If hero image: `alt` attribute, `noZoom`, responsive sizing, light/dark variants if needed.
+
+#### Adaptive hero & CTA backgrounds (required for any tinted/dark section)
+
+The biggest visual failure on a landing page is leaving the hero and closing CTA permanently dark (or permanently brand-colored) "because they look great" — they look great in *one* mode and jarring in the other. Any section with a tinted, gradient, or dark background must define a light-mode variant **and** a dark-mode variant so the section blends with the surrounding chrome in both themes.
+
+Pattern:
+
+- Base classes describe the **light-mode** appearance. `dark:` variants describe the **dark-mode** appearance.
+- Layer the variants on: background, border, decorative glow opacity, heading text, subtitle text, badge/pill, outline button background/border/text.
+- The filled primary CTA (brand-color button) can usually keep one color in both modes — it carries the brand and acts as the visual anchor.
+- The inline code preview pane, on the other hand, should stay **dark in both modes** (terminals are universally dark across Stripe, Linear, Vercel, etc.). Do not add `dark:` variants to it.
+
+```mdx
+{/* Hero section — light gradient in light mode, dark gradient in dark mode */}
+<section className="relative overflow-hidden
+  bg-gradient-to-br from-white via-[#f0f9fc] to-[#dceff7]
+  dark:from-[#020e18] dark:via-[#031a2c] dark:to-[#062a47]">
+
+  {/* Decorative glows: lighter opacity in light mode, brighter in dark */}
+  <div className="pointer-events-none absolute -top-32 -right-32 h-[480px] w-[480px]
+    rounded-full bg-[#00bef0] opacity-15 blur-3xl dark:opacity-20" />
+
+  {/* Pill / eyebrow badge */}
+  <div className="inline-flex items-center gap-2 rounded-full
+    border border-[#00bef0]/30 bg-white/70 text-[#0a3a5e]
+    dark:border-white/15 dark:bg-white/5 dark:text-[#7fe0f5]
+    px-3 py-1 text-xs font-medium backdrop-blur-sm">...</div>
+
+  {/* Heading + subtitle */}
+  <h1 className="text-[#031a2c] dark:text-white ...">Headline</h1>
+  <p className="text-slate-600 dark:text-[#cfe8f3]/90 ...">Subtitle</p>
+
+  {/* Primary CTA — brand color stays the same in both modes */}
+  <a className="bg-[#00bef0] text-[#031a2c] hover:bg-[#23c7e5] ...">Get started</a>
+
+  {/* Secondary CTA — outline button needs full light + dark treatment */}
+  <a className="border border-[#031a2c]/15 bg-white/80 text-[#031a2c]
+    hover:bg-white hover:border-[#031a2c]/30
+    dark:border-white/25 dark:bg-white/5 dark:text-white
+    dark:hover:bg-white/10 dark:hover:border-white/40 ...">Browse docs</a>
+</section>
+```
+
+Apply the same pattern to the closing CTA banner. In light mode add a subtle brand-tinted border (`border-[#00bef0]/20`) so the card has a clear edge against the page; in dark mode the gradient itself provides separation so set `dark:border-transparent`.
+
+Verification: screenshot the page in both modes and confirm:
+
+- Light mode: hero and closing CTA share the navbar's light tone (no large dark slab against a white page).
+- Dark mode: hero and closing CTA look as they did before (dark gradient, white heading, brand glow).
+- The filled brand-color CTA reads clearly in both modes.
+- Outline buttons are legible in both modes (dark text on light bg, light text on dark bg).
 
 ### 4. Section Containers + Heading Blocks (required)
 
@@ -323,8 +376,10 @@ No imports needed — these are available in any MDX page:
 
 ### 9. Closing CTA Banner (optional)
 
-- Visually distinct from content sections.
+- Visually distinct from content sections — typically a rounded `<div>` with a tinted/gradient background.
 - Strong heading + subtitle + CTA button linking to quickstart.
+- **Must adapt to both modes** using the same light/dark pattern as the hero (see "Adaptive hero & CTA backgrounds" under Hero Section). A permanently dark banner at the bottom of a light page is the second most common landing-page polish failure after a permanently dark hero.
+- In light mode add a subtle brand-tinted border (e.g. `border-[#00bef0]/20`) so the rounded card reads clearly against the page; in dark mode the gradient provides its own separation, so use `dark:border-transparent`.
 
 ### 10. Final Passes
 
@@ -368,7 +423,7 @@ rg -n -U '<svg[^>]*>(?:[^<]|<(?!/svg>))*<(?:circle|rect|line)\b' index.mdx | wc 
 
 If any are flagged, replace them with a single-path equivalent from Heroicons / Lucide / Phosphor, or swap to a Mintlify `<Icon icon="..."/>` / Font Awesome name on a `<Card>`.
 
-**Dark mode:** Every `text-*`, `bg-*`, and `border-*` class needs a `dark:` variant.
+**Dark mode:** Every `text-*`, `bg-*`, and `border-*` class needs a `dark:` variant. Pay special attention to the hero and closing CTA — see "Adaptive hero & CTA backgrounds" under Hero Section. Open the page in both light and dark mode (toggle the theme switcher, or screenshot with `--force-dark-mode` headless Chrome) and confirm the hero/CTA blend with the surrounding chrome in *both* modes. The filled brand-color primary CTA can stay one color across modes; the inline code preview pane should stay dark in both modes.
 
 **Responsive:** Multi-column → single-column on mobile. Text sizes scale down. Buttons stack vertically on small screens. Decorative elements hidden on mobile if needed.
 
