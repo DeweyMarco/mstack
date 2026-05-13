@@ -16,7 +16,13 @@ mstack/
         └── skills/
             ├── docs-to-mintlify/SKILL.md        # migrate any docs site to Mintlify
             ├── fix-broken-links/SKILL.md         # run mint broken-links until clean
-            ├── improve-agent-score/SKILL.md      # raise afdocs agent-readability score
+            ├── agent-ready-docs/
+            │   ├── SKILL.md                      # get any site to 100/100 agent-readiness (stack-agnostic)
+            │   └── references/
+            │       ├── checks-cheatsheet.md      # every AFDocs check with fix recipes
+            │       ├── llms-files.md             # llms.txt, llms-full.txt, skill.md format rules
+            │       ├── mcp-server.md             # minimal Streamable HTTP MCP server
+            │       └── nextjs-gotchas.md         # Next.js App Router-specific patterns
             ├── preview-qa/SKILL.md               # mechanical parity gate before han-review
             ├── han-review/SKILL.md               # launch-quality QA pass for previews
             ├── create-landing-page/SKILL.md      # build custom index.mdx
