@@ -12,6 +12,7 @@ A collection of Claude Code skills for Mintlify documentation workflows.
 | [`/han-review`](./han-review/SKILL.md) | CEO-level QA and design review to make Mintlify previews feel production-ready |
 | [`/create-landing-page`](./create-landing-page/SKILL.md) | Build custom Mintlify docs landing pages with hero sections, navigation cards, and dark-mode support |
 | [`/style-docs`](./style-docs/SKILL.md) | Style and polish docs sites with strong visual hierarchy, Mintlify-native components, and accessible theming |
+| [`/improve-agent-score`](./improve-agent-score/SKILL.md) | Raise the [afdocs](https://afdocs.dev) agent-readability score of a Mintlify docs site by fixing discoverability, markdown availability, and page-size issues |
 
 ## Installation
 
@@ -59,8 +60,9 @@ When migrating an existing docs site to Mintlify, apply the skills in this order
 2. **`/fix-broken-links`** — clean up cross-page refs that broke during slug normalization. Re-run after any later step that moves or renames pages.
 3. **`/create-landing-page`** — build a custom `index.mdx`. Runs after migration because it reads `docs.json` and needs the real page inventory so card/button `href` values point to existing paths.
 4. **`/style-docs`** — polish IA, components, and theming. May restructure navigation, in which case re-run `/fix-broken-links`.
-5. **`/preview-qa`** — mechanical parity gate. Walks every deterministic check (chrome, icons, sidebar collapsibility, multi-tone backgrounds, structural parity, visual verification) and produces a PASS/FAIL report. Re-run from gate 1 after any fix.
-6. **`/han-review`** — final CEO-level human-quality gate. Only invoke after `/preview-qa` reports all gates PASS. Often kicks work back to `/style-docs` or `/create-landing-page`; loop until it passes.
+5. **`/improve-agent-score`** — raise the afdocs agent-readability score by fixing frontmatter, navigation gaps, hidden content, and oversized pages. Run after content and structure are settled; if it splits pages or moves them, re-run `/fix-broken-links`.
+6. **`/preview-qa`** — mechanical parity gate. Walks every deterministic check (chrome, icons, sidebar collapsibility, multi-tone backgrounds, structural parity, visual verification) and produces a PASS/FAIL report. Re-run from gate 1 after any fix.
+7. **`/han-review`** — final CEO-level human-quality gate. Only invoke after `/preview-qa` reports all gates PASS. Often kicks work back to `/style-docs` or `/create-landing-page`; loop until it passes.
 
 For a greenfield docs site (no source to migrate), skip step 1 and hand-bootstrap a minimal `docs.json` plus stub pages before `/create-landing-page`.
 
@@ -89,6 +91,10 @@ Builds a custom `index.mdx` landing page with all known Mintlify gotchas handled
 ### `/style-docs`
 
 Polishes docs sites using `docs.json` configuration, Mintlify components, and UX rules focused on fast comprehension and first-task success. Includes a navigation restructuring workflow for large flat sidebars.
+
+### `/improve-agent-score`
+
+Raises the [afdocs](https://afdocs.dev) agent-readability score by running `npx afdocs check`, diagnosing failures, and fixing them in priority order — typically frontmatter (`title`, `description`, `sidebarTitle`), navigation coverage, collapsed-component content, and oversized pages. Loops until the score has improved over the baseline.
 
 ## License
 
