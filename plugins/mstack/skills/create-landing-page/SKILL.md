@@ -5,16 +5,27 @@ description: Build custom Mintlify docs landing pages (index.mdx) with hero sect
 
 # Create Landing Page
 
-Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`).
+Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`). For migrations, this is replica-first: match the source landing page's visible hierarchy, copy, CTAs, card structure, and brand assets before applying Mintlify polish.
 
 ## Before You Start
 
 1. Read the project's `docs.json` to understand navigation structure, brand colors, and existing page paths.
-2. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
-3. If the user provided an original docs/homepage URL, inspect its raw HTML/CSS for visible colors, logo, favicon, hero/background media, and top-level layout before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
-4. Confirm which docs pages already exist so all card/button `href` values point to real paths.
-5. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
-6. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
+2. Read the parity manifest when present so landing-page cards and CTAs point to source-backed page paths.
+3. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
+4. If the user provided an original docs/homepage URL, inspect its rendered page plus raw HTML/CSS for visible colors, logo, favicon, hero/background media, top-level layout, section order, card counts, CTA labels, and footer/header structure before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
+5. Confirm which docs pages already exist so all card/button `href` values point to real paths.
+6. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
+7. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
+
+## Replica-first landing rule
+
+When the task is migrating or replicating a company's docs site, mirror the source homepage first:
+
+- Preserve the source section order unless it conflicts with Mintlify rendering constraints.
+- Preserve visible copy for headings, subtitles, card titles, card descriptions, and CTA labels.
+- Match card/grid counts, repeated CTA patterns, hero media, navbar/footer links, and first-fold hierarchy.
+- Use Mintlify-native components or Tailwind utilities to implement the structure, but do not swap in a generic docs-template layout just because it looks cleaner.
+- If a source element cannot be reproduced safely in Mintlify, approximate it visibly and record the delta for `/preview-qa` and `/han-review`.
 
 ## Critical Mintlify Gotchas (read this before writing any JSX)
 

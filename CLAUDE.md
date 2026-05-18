@@ -51,14 +51,16 @@ To add a skill: create a new directory under `plugins/mstack/skills/` with a `SK
 
 For a migration from an existing docs site, run the skills in this order — each step assumes the previous one's outputs:
 
-1. `/docs-to-mintlify` — crawls the source and generates MDX + `docs.json` (the only skill that creates `docs.json`)
+1. `/docs-to-mintlify` — crawls the source, generates MDX + `docs.json`, and writes a parity manifest (the only skill that creates `docs.json`)
 2. `/fix-broken-links` — cleans up refs broken by slug normalization; re-run after any later step that moves pages
-3. `/create-landing-page` — reads `docs.json` and needs the real page inventory so card `href`s resolve
-4. `/style-docs` — polish; if it restructures navigation, loop back to `/fix-broken-links`
-5. `/preview-qa` — mechanical parity gate (chrome, icons, collapsibility, backgrounds, structural parity, visual verification); re-run from gate 1 after any fix
-6. `/han-review` — final human-quality QA gate; only invoke after `/preview-qa` reports all gates PASS
+3. `/style-docs` — polishes IA, chrome, components, collapsibility, and theming against the parity manifest; if it restructures navigation, loop back to `/fix-broken-links`
+4. `/create-landing-page` — builds the replica-first `index.mdx` after navigation, brand tokens, and page paths are stable
+5. `/fix-broken-links` — runs again after landing-page cards, header links, and footer links are added
+6. `/preview-qa` — mechanical parity gate (chrome, icons, collapsibility, backgrounds, structural parity, visual verification); re-run from gate 1 after any fix
+7. `/han-review` — final human-quality QA gate; only invoke after `/preview-qa` reports all gates PASS
+8. `/agent-ready-docs` — optional post-parity AFDocs / Mintlify Agent Rank pass; if it changes visible content, navigation, or page splits, rerun `/fix-broken-links` and `/preview-qa`
 
-For a greenfield site (no source), skip step 1 and hand-bootstrap a minimal `docs.json` + stub pages before `/create-landing-page`.
+For a greenfield site (no source), skip step 1 and hand-bootstrap a minimal `docs.json` + stub pages before `/style-docs`.
 
 For Cursor, run `./scripts/install-cursor.sh` after changing skills. Cursor expects each skill at `~/.cursor/skills/<skill-name>/SKILL.md`; do not install into `~/.cursor/skills-cursor`, which is reserved for Cursor-managed built-in skills.
 

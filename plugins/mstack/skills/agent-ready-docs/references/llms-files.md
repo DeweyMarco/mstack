@@ -2,6 +2,15 @@
 
 The trio of "agent-friendly" files at the site root. Each has a specific role and specific gotchas. **Format rules are stack-agnostic.** Implementation depends on what the user is using — static files in a `public/` folder, route handlers in a framework, edge functions, etc. Use the user's stack; don't force them onto a particular tool.
 
+For **Mintlify-hosted docs**, these files and routes are mostly platform-owned:
+
+- `llms.txt` is generated at `/llms.txt` and `/.well-known/llms.txt`.
+- `llms-full.txt` is generated at `/llms-full.txt` and `/.well-known/llms-full.txt`.
+- `.md` page URLs and `Accept: text/markdown`/`Accept: text/plain` are built in.
+- `skill.md` and skills discovery are built in; custom skills live at root `skill.md` or `.mintlify/skills/<name>/SKILL.md`.
+
+Only add custom files when generated output is too broad, too large, or insufficiently specific for the score/user need.
+
 ## llms.txt
 
 The index. Linked from your homepage and crawled first by agents. **Keep it small and clean.**
@@ -68,6 +77,8 @@ The root stays under 50K. The nested file can be larger but should stay under 10
 
 The simplest path is a static `public/llms.txt` file that you regenerate on build. If your inventory is dynamic (database-backed, file-system-derived, etc.) you'll want a route/handler that builds the content on request. Both work — the scorer doesn't care how you generate it, only what you serve.
 
+In Mintlify-hosted docs, the simplest path is usually no custom file: Mintlify generates `llms.txt` from `docs.json`, page frontmatter, and API specs. Improve the generated file by adding clear page `description` frontmatter and making sure important pages are represented in navigation. Add a custom root `llms.txt` only when you need curated sections or size control.
+
 If you have nested files like `/articles/llms.txt`, watch out for routing conflicts with dynamic segments at the same path level (e.g., `/articles/[slug]`) — most frameworks prefer the static path, but verify.
 
 ## llms-full.txt
@@ -77,6 +88,8 @@ The "long-context corpus" — a single file with all content for agents that can
 **Size threshold: pass between 500 and 5,000,000 chars.** Both too small and too large fail.
 
 **The page-size-markdown check applies here.** Since the response is `text/plain`, the scorer measures the raw body without HTML→md conversion. You're racing against a 50K warn / 100K fail budget for the converted-markdown size check.
+
+Mintlify-hosted docs generate `llms-full.txt` automatically. Prefer the generated file unless the score reports a size/validity issue. If you add a custom root `llms-full.txt`, keep it compact and template repeated patterns once.
 
 ### Compress aggressively with templates
 
@@ -146,6 +159,8 @@ The check `skill-md` looks for either:
 
 A static `/skill.md` is the path of least resistance.
 
+Mintlify-hosted docs support both generated and custom skills. Mintlify can generate `skill.md` for public docs. To override it, add a root `skill.md`. To publish multiple skills, add `.mintlify/skills/<skill-name>/SKILL.md`; Mintlify serves discovery manifests at `/.well-known/agent-skills/index.json` and `/.well-known/skills/index.json`, plus individual skill files. If a site is reverse-proxied, forward `/skill.md`, `/.well-known/skills/*`, and `/.well-known/agent-skills/*` to Mintlify.
+
 ### Structure
 
 ```yaml
@@ -208,6 +223,8 @@ Every `.md` response from your site must have a blockquote near the top linking 
 
 Lower than 40 chars but contains the link with proper blockquote syntax. If your scorer is more strict, use the longer form: `> For the complete documentation index, see [llms.txt](/llms.txt).`
 
+Mintlify-hosted Markdown exports include a documentation-index blockquote automatically. Do not add this text to every MDX file unless a real score report says the generated Markdown is missing the directive.
+
 ## Content negotiation + .md URL support
 
 Two checks (`content-negotiation` and `markdown-url-support`) are about the same routing trick. The site should:
@@ -219,7 +236,7 @@ How to wire it depends on the stack:
 
 - **Static-site generators** (Hugo, Astro, etc.): pre-render both `page.html` and `page.md` at build time. Configure your CDN/server to look at the Accept header for content negotiation.
 - **Server frameworks with middleware** (Next.js, SvelteKit, Nuxt, Remix): a single middleware can both rewrite `.md` URLs to a markdown route AND inspect the `Accept` header to dispatch.
-- **Mintlify-hosted docs**: this is built-in.
+- **Mintlify-hosted docs**: this is built in for `.md` URLs, `Accept: text/markdown`, and `Accept: text/plain`.
 
 The point is: when an agent fetches `your-site.com/foo` with `Accept: text/markdown`, OR `your-site.com/foo.md`, return the markdown variant. How you do that is your call.
 
@@ -236,3 +253,5 @@ In framework metadata APIs this typically maps to a `types: { "text/markdown": "
 ## Renderer parity
 
 Whatever you serve at `/page.md` should contain the same substantive content as `/page` HTML. The `markdown-content-parity` check measures this. If your HTML page has 6 "Related items" sections that aren't in the markdown response, that's a 6-section gap — fix by rendering the same sections in markdown.
+
+Mintlify-hosted docs derive Markdown output from MDX source. Use `<Visibility for="agents">` for content that should appear only in Markdown exports, and `<Visibility for="humans">` for web-only UI guidance. This is the supported way to tailor agent output without maintaining separate pages.

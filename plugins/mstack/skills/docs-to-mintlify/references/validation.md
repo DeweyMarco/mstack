@@ -40,8 +40,8 @@ After copying transformer output into the repo with `cp -R`, list the tree for f
 Before finishing:
 
 - `discovered_pages_count == converted_pages_count + explicitly_excluded_pages_count`
-- Every discovered page is marked `done` or `blocked` in the parity manifest.
-- Blocked pages include a concrete blocker reason and recommended next action.
+- Every discovered page is marked `done`, `blocked`, or `excluded` in the parity manifest.
+- Blocked and excluded pages include a concrete reason; blocked pages also include a recommended next action.
 - Re-run link crawl on converted docs to ensure no orphaned in-scope source pages were skipped.
 - Every `.mdx` file created during conversion appears in the `docs.json` navigation tree.
 - There are no dangling references in `docs.json`.

@@ -14,7 +14,7 @@ Crawl depth rule: keep traversing internal docs links until two consecutive pass
 
 Normalize discovered URLs by removing hash fragments, canonicalizing trailing slash behavior, and deduping query-only variants unless they represent distinct content.
 
-Track discovery in a parity manifest table with: `source_url`, `normalized_path`, `nav_section`, `status` (`todo|done|blocked|stale`), and `notes`. Use `stale` for sitemap entries that 404 on every endpoint pattern (the page was removed but the sitemap was never updated) — these are excluded from both fetch and the final `docs.json` parity check, not blockers.
+Track discovery in a repo-local parity manifest table with: `source_url`, `source_title`, `source_sidebar_label`, `source_h1`, `source_description`, `normalized_path`, `nav_section`, `converted_file`, `status` (`todo|done|blocked|excluded`), and `notes`. Use `excluded` for sitemap entries that 404 on every endpoint pattern (the page was removed but the sitemap was never updated) — these are excluded from both fetch and the final `docs.json` parity check, not blockers.
 
 Do not stop at the first-level sidebar; deep nested and cross-linked pages are required.
 
@@ -37,7 +37,7 @@ cat all-urls.txt | xargs -P 20 -I {} bash -c 'curl -sS --max-time 30 -o "mirror/
 Expect some URLs to 404 or return HTML. Distinguish two cases before moving on:
 
 - **Wrong endpoint pattern.** The page exists but `.md` (or `_payload.json` on Nuxt sites) doesn't resolve for it — usually a root/landing slug or a special section index. Try the alternate strategies above (`readme.md`, explicit slug, scrape rendered HTML) and re-fetch.
-- **Stale sitemap entry.** The URL 404s on **every** endpoint pattern you try. The sitemap claims the page exists but it really doesn't — common on any auto-generated sitemap that doesn't trigger on content removal (Nuxt, Docusaurus, GitBook, custom Next.js sites all do this). Mark `status: stale` in the parity manifest, exclude from `mirror/`, and exclude from the final `docs.json` parity check. Do not let stale entries block the migration. A small percentage is normal — the Pathway migration had 22/289.
+- **Stale sitemap entry.** The URL 404s on **every** endpoint pattern you try. The sitemap claims the page exists but it really doesn't — common on any auto-generated sitemap that doesn't trigger on content removal (Nuxt, Docusaurus, GitBook, custom Next.js sites all do this). Mark `status: excluded` in the parity manifest with `notes: "stale sitemap entry: 404s on all endpoint patterns"`, exclude from `mirror/`, and exclude from the final `docs.json` parity check. Do not let stale entries block the migration. A small percentage is normal — the Pathway migration had 22/289.
 
 ## Nuxt Content Sites
 
@@ -61,7 +61,7 @@ cat all-urls.txt | xargs -P 20 -I {} bash -c 'curl -sS --max-time 30 -o "mirror/
 
 Gotchas specific to Nuxt sites:
 
-- **Stale sitemap entries are common on Nuxt.** Nuxt's sitemap module doesn't always trigger on content removal, so expect a small percentage of dead entries (the Pathway migration hit 22/289). See the general stale-entry policy above — mark `status: stale` and move on.
+- **Stale sitemap entries are common on Nuxt.** Nuxt's sitemap module doesn't always trigger on content removal, so expect a small percentage of dead entries (the Pathway migration hit 22/289). See the general stale-entry policy above — mark `status: excluded` with a concrete note and move on.
 - **Build the tag map before writing the transformer.** Minimark ASTs use site-specific custom tags for callouts, alerts, figures, and prose blocks (e.g. `pw-info`, `prose-warning`, custom `<MyAlert>` components registered in the source repo). Grep every payload for unique `tag` values first, then map each one explicitly to a Mintlify component or a fallback. Any unmapped tag silently passes through as raw text.
 - **Pick one canonical URL form.** `pathway.com/foo` and `pathway.com/foo/` may both 200, but typically only one serves `/_payload.json`. Decide trailing-slash policy during URL inventory and apply it everywhere — mixed forms will create duplicate `mirror/` files and ghost entries in the parity check.
 - **Some Nuxt setups serve `_payload.js` (executable) instead of `_payload.json`.** If the JSON endpoint 404s site-wide but you still see `<div id="__nuxt">`, check for `.js` and parse the embedded payload with a small Node helper. This is rarer in modern Nuxt 3 with payload extraction enabled, but worth a 30-second check before falling back to HTML.

@@ -9,7 +9,7 @@ Self-check skill that walks every deterministic parity gate on a Mintlify previe
 
 ## When to use
 
-- After `/style-docs` and before `/han-review` in the migration workflow.
+- After `/style-docs`, `/create-landing-page`, and the second `/fix-broken-links` pass; before `/han-review` in the migration workflow.
 - Before sharing a preview URL with a customer, designer, or stakeholder.
 - After any substantive change to `docs.json`, `custom.css`, or a page that mirrors a source URL.
 
@@ -24,10 +24,10 @@ The Han review is for subjective polish — *does this feel launch-ready?*. Prev
 ## Position in the workflow
 
 ```
-/docs-to-mintlify → /fix-broken-links → /create-landing-page → /style-docs → /preview-qa → /han-review
+/docs-to-mintlify → /fix-broken-links → /style-docs → /create-landing-page → /fix-broken-links → /preview-qa → /han-review → optional /agent-ready-docs
 ```
 
-`/preview-qa` is the last automated gate before the human review. It does not produce new content; it verifies what is already there. On any failure, route to the appropriate fix skill, then re-run `/preview-qa` from gate 1.
+`/preview-qa` is the last automated gate before the human review. It does not produce new content; it verifies what is already there. On any failure, route to the appropriate fix skill, then re-run `/preview-qa` from gate 1. If `/agent-ready-docs` runs after `/han-review` and changes visible content, navigation, or page splits, re-run `/fix-broken-links` and `/preview-qa`.
 
 ## The QA standard
 

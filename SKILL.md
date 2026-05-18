@@ -1,6 +1,6 @@
 ---
 name: mstack
-description: Mintlify documentation workflows for migration, broken link repair, landing pages, docs styling, and launch-quality preview review. Use when working on Mintlify docs, docs.json, MDX conversion, Mintlify previews, or documentation polish.
+description: Mintlify documentation workflows for migration, broken link repair, docs styling, replica landing pages, launch-quality preview review, and agent readiness. Use when working on Mintlify docs, docs.json, MDX conversion, Mintlify previews, documentation polish, or agent-readiness scoring.
 ---
 
 # mstack
@@ -23,6 +23,7 @@ After installation, Cursor can discover each workflow independently:
 - `han-review`
 - `create-landing-page`
 - `style-docs`
+- `agent-ready-docs`
 
 ## Fallback
 
@@ -34,3 +35,4 @@ If this repository was cloned directly into `~/.cursor/skills/mstack`, use the n
 - For final launch-quality review, read `plugins/mstack/skills/han-review/SKILL.md`.
 - For landing pages, read `plugins/mstack/skills/create-landing-page/SKILL.md`.
 - For docs styling, read `plugins/mstack/skills/style-docs/SKILL.md`.
+- For post-parity agent-readiness scoring, read `plugins/mstack/skills/agent-ready-docs/SKILL.md`.

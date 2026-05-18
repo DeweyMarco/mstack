@@ -9,6 +9,17 @@ Get a site to **100/100 on agent-readiness scoring** — the checks at [afdocs.d
 
 This skill is stack-agnostic. The rules apply to docs sites, marketing pages, product sites, and anything else being scored. Every site's structure is different — treat the patterns here as **diagnostic categories**, not a checklist of literal files to fix. When implementation examples appear, they're illustrative; the user's stack might be Next.js, Astro, Hugo, Mintlify, plain HTML, or something else entirely.
 
+For **Mintlify-hosted docs**, many route-level agent-readiness features are platform-owned. Do not add custom route handlers for `/llms.txt`, `/llms-full.txt`, `.md` URLs, `Accept: text/markdown`, `/.well-known/agent-skills/*`, or `/mcp` unless the site is headless/custom-front-end or reverse-proxied in a way that bypasses Mintlify.
+
+## Position in the mstack migration workflow
+
+For source-replica migrations, run this skill after `/preview-qa` and `/han-review`, not before them. Agent-readiness changes are useful, but they must not silently break source parity:
+
+- Do not add visible frontmatter descriptions that the source page does not render.
+- Do not rename source-backed page titles, sidebar labels, or CTAs solely for score optimization.
+- If you split pages, move pages, add navigation entries, or change visible content, rerun `/fix-broken-links` and `/preview-qa`.
+- Prefer agent-only improvements such as generated platform metadata, `Visibility for="agents"`, and Markdown availability fixes when they preserve the human-facing replica.
+
 ## When to reach for this
 
 - Any AFDocs/Mintlify scoring report shared with failing/warning checks
@@ -19,14 +30,14 @@ This skill is stack-agnostic. The rules apply to docs sites, marketing pages, pr
 
 ## Mintlify-hosted docs: fast-path workflow
 
-When the user is working inside a Mintlify project (has `docs.json` or `mint.json`), use this focused loop before the deeper diagnostic workflow below.
+When the user is working inside a Mintlify project (has `docs.json`), use this focused loop before the deeper diagnostic workflow below.
 
 ### 1. Get the docs URL
 
-If not provided, detect from project config:
+If not provided, read `docs.json` for the configured URL or ask the user for the deployed docs URL. `mint.json` is deprecated; only use it when working on an old project that has not migrated yet.
 
 ```bash
-cat docs.json 2>/dev/null | grep -m1 '"url"' || cat mint.json 2>/dev/null | grep -m1 '"url"'
+jq -r '.url // empty' docs.json
 ```
 
 ### 2. Baseline score
@@ -51,16 +62,35 @@ Work through failures in priority order. These are fast and high-value for Mintl
 
 | Category | Issue | Fix |
 |---|---|---|
-| Content discoverability | Page not in `navigation` | Add page to the correct `navigation` group in `docs.json` / `mint.json` |
+| Content discoverability | Page not in `navigation` | Add page to the correct `navigation` group in `docs.json` |
 | Content discoverability | No title | Add a clear `title` to the page's frontmatter |
-| Content discoverability | Missing description | Add a one-sentence `description` to the page frontmatter |
-| Markdown availability | Tabs/Accordions hide content | Move critical content out of collapsed components or add a plain-text summary |
+| Content discoverability | Missing description | Add a one-sentence `description` to page frontmatter; Mintlify uses it in generated `llms.txt` |
+| Markdown availability | Human-only UI instructions | Use `<Visibility for="agents">` for agent-specific Markdown output and `<Visibility for="humans">` for web-only UI guidance |
+| Markdown availability | Tabs/Accordions hide critical content | Move critical content out of collapsed components or add an agent-facing summary |
 | Markdown availability | Code-only page | Add prose explanation around code snippets |
 | Page size | Page too long | Split into focused sub-pages; add anchor links in the parent |
 
 Fix issues in batches by category, not one micro-edit per re-run.
 
-### 5. Iterate
+### 5. Verify platform-provided features before implementing anything
+
+Mintlify-hosted docs can already build the core agent-readiness surface:
+
+| Element | Mintlify-hosted support | What to do in the docs repo |
+|---|---|---|
+| `llms.txt` | Built in at `/llms.txt` and `/.well-known/llms.txt`; custom root `llms.txt` overrides generated output | Usually add/fix page `description` fields and navigation. Only add custom `llms.txt` when generated output is too large or needs curated sections |
+| `llms-full.txt` | Built in at `/llms-full.txt` and `/.well-known/llms-full.txt`; custom root file overrides generated output | Usually leave generated. Add custom only if score reports size/validity issues |
+| Markdown URL support | Built in: append `.md` to page URLs | Do not implement routes. Fix source MDX if Markdown output is incomplete |
+| Content negotiation | Built in for `Accept: text/markdown` and `Accept: text/plain` | Do not implement middleware on hosted docs |
+| Agent-only Markdown content | Built in with `<Visibility for="agents">` | Use it for agent instructions that should not appear in the web UI |
+| HTML llms discovery | Built in with `Link` and `X-Llms-Txt` headers on page responses | Verify deployed headers if reverse-proxied |
+| `skill.md` / skill discovery | Built in. Mintlify can generate `skill.md`; custom root `skill.md` or `.mintlify/skills/*/SKILL.md` overrides/adds skills; discovery lives under `/.well-known/agent-skills/` and `/.well-known/skills/` | Add custom skills when generated output is not specific enough |
+| MCP server | Built in at `/mcp` for published Mintlify docs, returning search and docs-filesystem tools | Verify with JSON-RPC; do not implement a custom MCP server for hosted docs |
+| Cache headers | Built in on Mintlify docs responses with revalidation-friendly `Cache-Control` | If reverse-proxied, verify the proxy preserves sane headers |
+
+References checked: Mintlify docs for `llms.txt`, Markdown export, `skill.md`, MCP, and `Visibility`; live HTTP checks against Mintlify's hosted docs confirmed `.md`, `Accept: text/markdown`, `llms` files, skills discovery, cache headers, and `/mcp`.
+
+### 6. Iterate
 
 ```bash
 npx afdocs check <url> --format scorecard --sampling deterministic
@@ -212,13 +242,17 @@ Symptom: `markdown-content-parity` warning — the markdown response is missing 
 
 Symptom: `mcp-server-discoverable` FAIL.
 
-**Fix**: implement a small JSON-RPC endpoint at `/mcp` that responds to `initialize` and `tools/list`. Just one or two useful tools is enough for the check. See [`references/mcp-server.md`](references/mcp-server.md).
+**Mintlify-hosted fix**: verify the deployed docs domain serves Mintlify's built-in `/mcp` endpoint. If the site is behind a reverse proxy, make sure `/mcp` is forwarded to Mintlify and not intercepted.
+
+**Custom/headless fix**: implement a small JSON-RPC endpoint at `/mcp` that responds to `initialize` and `tools/list`. Just one or two useful tools is enough for the check. See [`references/mcp-server.md`](references/mcp-server.md).
 
 ### F. Content negotiation / .md URL support
 
 Symptom: `content-negotiation` or `markdown-url-support` FAIL.
 
-**Fix**: serve markdown when `Accept: text/markdown` is sent, OR when `.md` is appended to any URL. In Mintlify-hosted docs this is usually built-in; in custom apps you typically add a middleware.
+**Mintlify-hosted fix**: this is built in. If it fails, check that the URL is a published Mintlify page and that any reverse proxy forwards `.md` paths and `Accept` headers.
+
+**Custom/headless fix**: serve markdown when `Accept: text/markdown` is sent, OR when `.md` is appended to any URL.
 
 ## Per-check quick reference
 
@@ -231,15 +265,15 @@ For full recipes see [`references/checks-cheatsheet.md`](references/checks-cheat
 | `llms-txt-links-resolve` | HEAD-check every link; remove or fix 4xx/5xx; replace `{...}` placeholders with `<...>` |
 | `llms-txt-links-markdown` | Replace HTML/JSON-page links with `.md` variants |
 | `llms-txt-directive-html` | Add a link to `/llms.txt` somewhere in HTML (e.g., `sr-only` blockquote) |
-| `llms-txt-directive-md` | Each `.md` response starts with `> [llms.txt](/llms.txt)` blockquote |
+| `llms-txt-directive-md` | For Mintlify-hosted docs, verify generated Markdown includes the documentation-index blockquote; for custom stacks, prepend `> [llms.txt](/llms.txt)` |
 | `page-size-html` (Mintlify-only fail) | See category A above |
 | `page-size-markdown` | A `text/plain` endpoint (often `llms-full.txt`) is too big — compress with templates |
 | `content-start-position` | See category B above |
-| `content-negotiation` | Support `Accept: text/markdown` rewriting to `.md` route |
-| `markdown-url-support` | Append `.md` to any URL → returns markdown |
+| `content-negotiation` | Mintlify-hosted: built in. Custom/headless: support `Accept: text/markdown` rewriting to `.md` route |
+| `markdown-url-support` | Mintlify-hosted: built in. Custom/headless: append `.md` to any URL → returns markdown |
 | `markdown-content-parity` | Markdown response must include same content sections as HTML |
-| `mcp-server-discoverable` | Implement `/mcp` Streamable HTTP server (see references/mcp-server.md) |
-| `cache-header-hygiene` | `Cache-Control: max-age=...` (under 24h) on docs endpoints |
+| `mcp-server-discoverable` | Mintlify-hosted: verify built-in `/mcp`. Custom/headless: implement `/mcp` Streamable HTTP server |
+| `cache-header-hygiene` | Mintlify-hosted: verify platform/proxy headers. Custom/headless: set `Cache-Control: max-age=...` (under 24h) |
 | `auth-gate-detection` | Don't gate docs behind auth |
 
 ## Common pitfalls

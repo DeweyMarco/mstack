@@ -6,13 +6,13 @@ A collection of Claude Code skills for Mintlify documentation workflows.
 
 | Skill | Description |
 |-------|-------------|
-| [`/docs-to-mintlify`](./docs-to-mintlify/SKILL.md) | Convert any existing docs site into a Mintlify-compatible repo with proper MDX files, components, and navigation |
-| [`/fix-broken-links`](./fix-broken-links/SKILL.md) | Fix all broken links in a Mintlify project until `mint broken-links` reports success |
-| [`/preview-qa`](./preview-qa/SKILL.md) | Mechanical parity gate that runs every deterministic check on a preview (chrome, icons, collapsibility, backgrounds, structural parity, visual verification) before handing off to `/han-review` |
-| [`/han-review`](./han-review/SKILL.md) | CEO-level QA and design review to make Mintlify previews feel production-ready |
-| [`/create-landing-page`](./create-landing-page/SKILL.md) | Build custom Mintlify docs landing pages with hero sections, navigation cards, and dark-mode support |
-| [`/style-docs`](./style-docs/SKILL.md) | Style and polish docs sites with strong visual hierarchy, Mintlify-native components, and accessible theming |
-| [`/improve-agent-score`](./improve-agent-score/SKILL.md) | Raise the [afdocs](https://afdocs.dev) agent-readability score of a Mintlify docs site by fixing discoverability, markdown availability, and page-size issues |
+| [`/docs-to-mintlify`](./plugins/mstack/skills/docs-to-mintlify/SKILL.md) | Convert any existing docs site into a Mintlify-compatible repo with proper MDX files, components, navigation, and a parity manifest |
+| [`/fix-broken-links`](./plugins/mstack/skills/fix-broken-links/SKILL.md) | Fix all broken links in a Mintlify project until `mint broken-links` reports success |
+| [`/style-docs`](./plugins/mstack/skills/style-docs/SKILL.md) | Style and polish docs sites with strong source-parity IA, Mintlify-native components, and accessible theming |
+| [`/create-landing-page`](./plugins/mstack/skills/create-landing-page/SKILL.md) | Build replica-first custom Mintlify docs landing pages with source-matched structure, hero sections, navigation cards, and dark-mode support |
+| [`/preview-qa`](./plugins/mstack/skills/preview-qa/SKILL.md) | Mechanical parity gate that runs every deterministic check on a preview (chrome, icons, collapsibility, backgrounds, structural parity, visual verification) before handing off to `/han-review` |
+| [`/han-review`](./plugins/mstack/skills/han-review/SKILL.md) | CEO-level QA and design review to make Mintlify previews feel production-ready |
+| [`/agent-ready-docs`](./plugins/mstack/skills/agent-ready-docs/SKILL.md) | Optional post-parity pass to raise the [afdocs](https://afdocs.dev) and Mintlify Agent Rank score without regressing source parity |
 
 ## Installation
 
@@ -56,21 +56,22 @@ CURSOR_SKILLS_DIR=/path/to/.cursor/skills ./scripts/install-cursor.sh
 
 When migrating an existing docs site to Mintlify, apply the skills in this order. Each step assumes the previous one has produced its outputs.
 
-1. **`/docs-to-mintlify`** — crawl the source site and generate MDX files + `docs.json` navigation. This is the only skill that creates `docs.json` from scratch.
+1. **`/docs-to-mintlify`** — crawl the source site, generate MDX files + `docs.json` navigation, and write a parity manifest. This is the only skill that creates `docs.json` from scratch.
 2. **`/fix-broken-links`** — clean up cross-page refs that broke during slug normalization. Re-run after any later step that moves or renames pages.
-3. **`/create-landing-page`** — build a custom `index.mdx`. Runs after migration because it reads `docs.json` and needs the real page inventory so card/button `href` values point to existing paths.
-4. **`/style-docs`** — polish IA, components, and theming. May restructure navigation, in which case re-run `/fix-broken-links`.
-5. **`/improve-agent-score`** — raise the afdocs agent-readability score by fixing frontmatter, navigation gaps, hidden content, and oversized pages. Run after content and structure are settled; if it splits pages or moves them, re-run `/fix-broken-links`.
+3. **`/style-docs`** — polish IA, components, chrome, tabs/groups, collapsibility, and theming against the parity manifest. May restructure navigation, in which case re-run `/fix-broken-links`.
+4. **`/create-landing-page`** — build a custom replica-first `index.mdx` after navigation, brand tokens, and page paths are stable.
+5. **`/fix-broken-links`** — run again after landing-page cards, header links, and footer links are added.
 6. **`/preview-qa`** — mechanical parity gate. Walks every deterministic check (chrome, icons, sidebar collapsibility, multi-tone backgrounds, structural parity, visual verification) and produces a PASS/FAIL report. Re-run from gate 1 after any fix.
 7. **`/han-review`** — final CEO-level human-quality gate. Only invoke after `/preview-qa` reports all gates PASS. Often kicks work back to `/style-docs` or `/create-landing-page`; loop until it passes.
+8. **`/agent-ready-docs`** — optional post-parity optimization for afdocs / Mintlify Agent Rank. If it changes visible content, navigation, or page splits, re-run `/fix-broken-links` and `/preview-qa`.
 
-For a greenfield docs site (no source to migrate), skip step 1 and hand-bootstrap a minimal `docs.json` plus stub pages before `/create-landing-page`.
+For a greenfield docs site (no source to migrate), skip step 1 and hand-bootstrap a minimal `docs.json` plus stub pages before `/style-docs`.
 
 ## Skills overview
 
 ### `/docs-to-mintlify`
 
-Converts any existing documentation site into a Mintlify-compatible repo. Handles exhaustive crawling, GitBook syntax normalization, MDX safety rules, OpenAPI reference generation, and navigation wiring.
+Converts any existing documentation site into a Mintlify-compatible repo. Handles exhaustive crawling, parity manifest creation, GitBook syntax normalization, MDX safety rules, OpenAPI reference generation, and navigation wiring.
 
 ### `/fix-broken-links`
 
@@ -86,15 +87,15 @@ Applies a high bar QA workflow for previews that must feel launch-ready: pixel-p
 
 ### `/create-landing-page`
 
-Builds a custom `index.mdx` landing page with all known Mintlify gotchas handled upfront: stripped semantic HTML, Tailwind-only styling, single-path SVG icons, and chrome-hiding CSS.
+Builds a replica-first custom `index.mdx` landing page with all known Mintlify gotchas handled upfront: stripped semantic HTML, Tailwind-only styling, single-path SVG icons, and chrome-hiding CSS.
 
 ### `/style-docs`
 
-Polishes docs sites using `docs.json` configuration, Mintlify components, and UX rules focused on fast comprehension and first-task success. Includes a navigation restructuring workflow for large flat sidebars.
+Polishes docs sites using the parity manifest, `docs.json` configuration, Mintlify components, and UX rules focused on source familiarity, fast comprehension, and first-task success. Includes a navigation restructuring workflow for large flat sidebars.
 
-### `/improve-agent-score`
+### `/agent-ready-docs`
 
-Raises the [afdocs](https://afdocs.dev) agent-readability score by running `npx afdocs check`, diagnosing failures, and fixing them in priority order — typically frontmatter (`title`, `description`, `sidebarTitle`), navigation coverage, collapsed-component content, and oversized pages. Loops until the score has improved over the baseline.
+Raises the [afdocs](https://afdocs.dev) and Mintlify Agent Rank score by running diagnostics, fixing discoverability and Markdown availability issues, and looping until the score improves. In this migration stack it is a post-parity pass: do not add visible frontmatter, split pages, or alter navigation in ways that regress source parity without re-running `/preview-qa`.
 
 ## License
 

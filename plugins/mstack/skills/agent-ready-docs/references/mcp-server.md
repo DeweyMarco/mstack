@@ -7,6 +7,18 @@ The `mcp-server-discoverable` and `mcp-tool-count` checks want a JSON-RPC MCP se
 
 This is the **Streamable HTTP** transport (the modern way). For a public read-only catalog server, **stateless mode** is simplest and correct.
 
+## Mintlify-hosted docs
+
+Mintlify-hosted docs already provide an MCP server at `/mcp` for published documentation. It responds over Streamable HTTP and exposes documentation search/filesystem tools. If the user is on hosted Mintlify, verify the endpoint instead of implementing a new one.
+
+Only build a custom MCP server when:
+
+- The site is headless/custom-front-end and does not use Mintlify hosting for routes.
+- A reverse proxy is not forwarding `/mcp` to Mintlify and cannot be configured to do so.
+- The user explicitly wants custom product tools beyond Mintlify's documentation tools.
+
+For reverse-proxied Mintlify docs, forward `/mcp` to the Mintlify docs origin and preserve `POST`, `Content-Type: application/json`, and `Accept: application/json, text/event-stream`.
+
 ## What the check actually does
 
 Roughly:

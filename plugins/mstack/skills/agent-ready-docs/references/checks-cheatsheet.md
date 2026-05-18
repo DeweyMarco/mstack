@@ -7,6 +7,7 @@ Stack-agnostic reference. Every check has: what it measures, threshold, common c
 ### `llms-txt-exists`
 **Looks for**: `/llms.txt` returning `text/*` (not HTML), non-empty body.
 **Fix**: Add a route or static file that serves `/llms.txt` with `Content-Type: text/plain`. Don't return HTML even on errors.
+**Mintlify-hosted**: Built in at `/llms.txt` and `/.well-known/llms.txt`. Add a custom root `llms.txt` only when generated output needs curation.
 
 ### `llms-txt-valid`
 **Looks for**: `# H1` first line, at least one markdown link `[text](url)`.
@@ -24,24 +25,29 @@ Stack-agnostic reference. Every check has: what it measures, threshold, common c
 ### `llms-txt-links-markdown`
 **Threshold**: ≥ 50% of same-origin links point to `.md` URLs.
 **Fix**: Where you currently link to HTML pages from llms.txt, link to their `.md` equivalents instead. External links don't count.
+**Mintlify-hosted**: Generated `llms.txt` links to `.md` page variants automatically. If this fails, look for custom `llms.txt` content or reverse-proxy path handling.
 
 ### `llms-txt-directive-html`
 **Looks for**: a link to `/llms.txt` somewhere in the HTML of doc pages.
 **Fix**: Put a small `sr-only` blockquote `<blockquote class="sr-only"><a href="/llms.txt">llms.txt</a></blockquote>` near the top of `<main>`, OR add a header link, OR a meta tag. Anywhere visible to the parser.
+**Mintlify-hosted**: Mintlify adds `Link` and `X-Llms-Txt` headers to page responses. Verify headers if the site is reverse-proxied before adding visible content.
 
 ### `llms-txt-directive-md`
 **Looks for**: a blockquote near top of EVERY markdown page that links to llms.txt.
 **Fix**: In every markdown response, prepend the body with `> [llms.txt](https://site.com/llms.txt)` directly after the H1. The shortest form (just the link in a blockquote) is enough.
+**Mintlify-hosted**: Markdown exports include a documentation-index blockquote. Fix source MDX/frontmatter rather than attempting to customize route output.
 
 ## Markdown Availability
 
 ### `markdown-url-support`
 **Looks for**: appending `.md` to any URL returns markdown content.
 **Fix**: Add a routing rule that recognizes `.md` URLs and serves a markdown variant. The exact mechanism depends on the stack — middleware, rewrite rule, separate route handler, or pre-rendered `.md` files alongside `.html`.
+**Mintlify-hosted**: Built in for published pages.
 
 ### `content-negotiation`
 **Looks for**: `GET /` with `Accept: text/markdown` returns markdown.
 **Fix**: Sniff the `Accept` header on incoming requests and dispatch to the markdown variant when it requests `text/markdown`. Same routing layer that handles `.md` URLs typically.
+**Mintlify-hosted**: Built in for `Accept: text/markdown` and `Accept: text/plain`. If this fails, check reverse-proxy forwarding.
 
 ## Page Size and Truncation Risk
 
@@ -118,10 +124,12 @@ Skipped when no tab panels with headers exist. Safe to ignore.
 **Threshold**: ≥ 95% content overlap between HTML and markdown versions.
 **Common cause**: HTML page has sections (e.g., "Similar items", "Related", "Comments") that aren't in the markdown response.
 **Fix**: Render the same sections in the markdown response. If HTML shows 6 similar items, include them as a `## Similar` list in markdown.
+**Mintlify-hosted**: Use `<Visibility for="agents">` for agent-only Markdown content and `<Visibility for="humans">` for web-only UI content. Fix the MDX source; do not implement a separate Markdown route.
 
 ### `cache-header-hygiene`
 **Looks for**: `Cache-Control` set on docs endpoints; max-age under 24h or revalidation directives.
 **Fix**: Add `Cache-Control: public, max-age=3600, must-revalidate` to llms.txt, llms-full.txt, skill.md, /mcp routes, and other docs/agent-facing endpoints.
+**Mintlify-hosted**: Built-in docs responses use revalidation-friendly cache headers. If a check fails, inspect any reverse proxy or CDN in front of Mintlify.
 
 ## Authentication and Access
 
@@ -137,16 +145,20 @@ Skipped when all docs are public. Safe.
 ### `mcp-server-discoverable`
 **Looks for**: `POST /mcp` accepts JSON-RPC `initialize` and `tools/list`.
 **Fix**: See [`mcp-server.md`](mcp-server.md) for the protocol and a working implementation.
+**Mintlify-hosted**: Built in at `/mcp` for published docs. Verify forwarding on custom domains or reverse proxies before implementing anything.
 
 ### `mcp-tool-count`
 **Threshold**: ≥ 1 tool registered.
 **Fix**: Register at least one useful tool — search/list/get patterns work well.
+**Mintlify-hosted**: Built-in MCP exposes documentation search/filesystem tools.
 
 ### `skill-md`
 **Looks for**: `/.well-known/agent-skills/index.json` (preferred) or legacy `/skill.md`.
 **Fix**: A static `/skill.md` markdown response is the simplest. Include skill name, when to use it, install instructions, and constraints.
+**Mintlify-hosted**: Built in. Mintlify can generate `skill.md`, and custom root `skill.md` or `.mintlify/skills/*/SKILL.md` files override/add skills. Prefer the `/.well-known/agent-skills/index.json` discovery endpoint when verifying.
 
 ### `llms-full-exists` / `llms-full-size` / `llms-full-valid`
 **Threshold for size**: 500 ≤ chars ≤ 5,000,000 (so don't make it tiny OR huge).
 **For valid**: needs `# H1` + at least 2 headings.
 **Fix**: Provide a single comprehensive corpus file with templates in header and compact item list. See [`llms-files.md`](llms-files.md).
+**Mintlify-hosted**: Built in at `/llms-full.txt` and `/.well-known/llms-full.txt`. Add a custom root file only if generated output causes a score failure.

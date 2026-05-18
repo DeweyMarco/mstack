@@ -20,9 +20,19 @@ Optimize for fast comprehension and first-task success:
 Before making styling changes:
 
 1. Read `docs.json` to understand theme, colors, fonts, logos, navigation, and icon library.
-2. Inspect the relevant page files to understand the current structure and component usage.
-3. Identify the primary user journeys that need to be obvious on the page.
-4. Reuse existing labels and IA where possible unless they are clearly confusing.
+2. Read the parity manifest (`parity-manifest.json` or `parity-manifest.md`) when present, and use it as the source of truth for source URLs, sidebar labels, H1s, subtitles, converted files, and exclusions.
+3. Inspect the relevant page files to understand the current structure and component usage.
+4. Identify the primary user journeys that need to be obvious on the page.
+5. Reuse source labels and IA unless the user explicitly asks to depart from the source or the source is clearly broken.
+
+## Source-parity rule
+
+For migration work, do not redesign away from the source by default. Your job is to make the Mintlify version feel polished while preserving the customer's visible IA, terminology, page hierarchy, chrome, and body structure. If a parity manifest exists, every navigation or page-structure change must preserve the manifest page set:
+
+- No `done` manifest page becomes orphaned from `docs.json`.
+- No source sidebar label is renamed without a source-backed reason.
+- No source H1 or visible subtitle is replaced with agent-written copy.
+- Any intentional departure from the source is noted in the handoff.
 
 ## Mintlify-first styling rules
 

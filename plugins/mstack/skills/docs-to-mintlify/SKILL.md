@@ -5,7 +5,7 @@ description: Converts an existing documentation site into a Mintlify-compatible 
 
 # Docs to Mintlify Conversion
 
-Convert an existing docs site into a parser-clean Mintlify repo with 1:1 content parity, complete navigation, and no orphaned pages.
+Convert an existing docs site into a parser-clean Mintlify repo with 1:1 content parity, complete navigation, no orphaned pages, and a durable parity manifest that later skills can verify against.
 
 ## Reference Loading
 
@@ -30,7 +30,8 @@ Load only the reference files needed for the current conversion:
 - Build a canonical URL inventory before writing MDX.
 - Crawl sitemaps, nested sitemap indexes, navigation UI, footer links, related pages, in-page links, version/language variants, `llms.txt`, docs index JSON, and route manifests.
 - Keep traversing internal docs links until two consecutive passes discover zero new in-scope docs pages.
-- Track every page in a parity manifest with `source_url`, `normalized_path`, `nav_section`, `status`, and `notes`.
+- Track every page in a parity manifest with `source_url`, `source_title`, `source_sidebar_label`, `source_h1`, `source_description`, `normalized_path`, `nav_section`, `converted_file`, `status`, and `notes`.
+- Keep the manifest in the repo as `parity-manifest.json` or `parity-manifest.md` so `/style-docs`, `/preview-qa`, and `/han-review` can compare against the same source inventory instead of re-inferring it from memory.
 - Read [references/discovery.md](references/discovery.md) before crawling.
 
 ### 3. Audit the Existing Repo
@@ -67,7 +68,14 @@ Load only the reference files needed for the current conversion:
 - Validate JSON after every structural edit.
 - Read [references/docs-json.md](references/docs-json.md) before editing `docs.json`.
 
-### 7. Validate Before Finishing
+### 7. Finalize the Parity Manifest
+
+- Update the manifest after conversion so every discovered page has `converted_file`, `status`, and `notes` filled in.
+- Mark only these statuses: `done`, `blocked`, or `excluded`.
+- For `blocked` and `excluded`, include a concrete source-specific reason in `notes`.
+- Confirm every `done` file appears in `docs.json`, and every `docs.json` page maps back to a manifest row unless it is a synthetic Mintlify-only page such as the custom homepage.
+
+### 8. Validate Before Finishing
 
 - Run `mint broken-links` before `mint dev`; treat every MDX parser error as a blocker.
 - Confirm no orphaned `.mdx` files, dangling navigation entries, skipped discovered pages, or unreferenced OpenAPI specs remain.
@@ -77,7 +85,8 @@ Load only the reference files needed for the current conversion:
 ## Completion Criteria
 
 - `discovered_pages_count == converted_pages_count + explicitly_excluded_pages_count`.
-- Every discovered page is marked `done` or `blocked` with a concrete reason.
+- Every discovered page is marked `done`, `blocked`, or `excluded` with a concrete reason for non-`done` statuses.
+- A repo-local parity manifest exists and includes `source_url`, `normalized_path`, `converted_file`, `nav_section`, `status`, and `notes` for every discovered page.
 - Every created `.mdx` file appears in the `docs.json` navigation tree.
 - `docs.json` includes root-level `contextual` config.
 - If API docs exist, every OpenAPI spec is referenced from `docs.json` and paired with root-level `api` config.
