@@ -7,6 +7,7 @@
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - File paths in `pages` arrays must not include `.mdx`.
 - Preserve **customer-authored** `colors`, `logo`, `favicon`, `fonts`, `navbar`, `footer`, and `seo` unless updating them is explicitly requested. **Exception:** if these fields contain Mintlify starter defaults (anything inherited from `mint init` or a docs template), they are placeholders to audit, not existing config to keep. The Blog global anchor, Twitter/GitHub footer socials, and "Get started" CTA from the default starter are the usual offenders.
+- Default `theme` to `"luma"` for greenfield `docs.json` and for migrations whose source has no obvious theme equivalent. Only deviate if the customer explicitly requests another theme (`maple`, `mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, `sequoia`) or the source's brand styling clearly maps to one. Do not silently inherit `maple` from `mint init` output.
 - Add root-level `api` config whenever the site has OpenAPI specs.
 - Validate with `python3 -c "import json; json.load(open('docs.json'))"` after every structural edit.
 

@@ -14,7 +14,7 @@ Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`
 3. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
 4. If the user provided an original docs/homepage URL, inspect its rendered page plus raw HTML/CSS for visible colors, logo, favicon, hero/background media, top-level layout, section order, card counts, CTA labels, and footer/header structure before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
 5. Confirm which docs pages already exist so all card/button `href` values point to real paths.
-6. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
+6. Verify the `mint` CLI runs and the `data-docs-theme` in use. The recommended default is `luma`; other supported themes are `maple`, `mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, and `sequoia`. For greenfield docs.json files, set `"theme": "luma"` unless the customer asks for something else.
 7. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
 
 ## Replica-first landing rule
@@ -55,7 +55,7 @@ Also safe: `<section>`, `<div>`, `<span>`, `<a>`, `<img>`, `<svg>`, `<h1>`–`<h
 
 `mode: "custom"` hides the sidebar, table of contents, and footer — but it keeps the top navbar and the product tabs bar. For a fully chromeless landing page with its own header, you need CSS to also hide the navbar and tabs and to reset the content offsets that the layout system still applies.
 
-**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `maple` theme; other themes (`luma`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
+**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `luma` theme (the mstack default); other themes (`maple`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
 
 ```css
 /* custom.css at the repo root */
