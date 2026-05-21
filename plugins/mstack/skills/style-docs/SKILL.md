@@ -303,6 +303,17 @@ For docs homepages and landing pages:
 
 Avoid marketing-style bloat. A docs homepage should help users start and orient quickly.
 
+### Chrome continuity — match the homepage's navbar/tabs to the rest of the site
+
+The single most jarring homepage defect is a visible chrome shift between `/` and every other docs page. Symptoms: the navbar logo jumps a few pixels, the tab row reflows, the demo CTA changes shape, the search bar reposition. Reviewers describe it as "jarring", "stitched together", or "two different sites". Almost always the cause is the same: the landing page uses `mode: "custom"` with a bespoke `<div role="banner">` header that looks *close* to Mintlify's standard navbar but isn't pixel-identical.
+
+Pick the chrome strategy before building the landing:
+
+- **Shared chrome (default).** When the rest of the docs use Mintlify's standard navbar + tab strip (Stripe, HubSpot, Vercel, and most modern dev-docs sites do this), the homepage should reuse the same chrome. Drop `mode: "custom"`, move marketing-nav items into `docs.json` (`navbar.links` for the link row, `navbar.primary` for the CTA), and hide only the sidebar, TOC, page header, and footer-nav on `/` via CSS. Zero visible seam. See `create-landing-page` → Gotcha 2 → Strategy B for the exact selectors (the right rail wrapper `#content-side-layout` is the most common bug — hiding the TOC alone leaves a ~304px gutter).
+- **Bespoke header (occasional).** Only when the source's marketing site has a navbar that *cannot* be replicated with `docs.json` alone (composed logo + tagline, multi-row chrome, unusual layout) and the customer explicitly wants it on the homepage only. Accept that the chrome shift will be visible and ship the bespoke header at pixel parity with the standard navbar's height, font weights, and spacing.
+
+Default to shared chrome. The bespoke-header path almost always produces the "jarring shift" feedback within a review cycle; switching back is cheap (the existing hero + sections survive intact), so prefer to start there.
+
 ## Matching a source site's branding
 
 When the goal is to make a Mintlify preview look like an existing source site (during or after `/docs-to-mintlify`), do not eyeball colors, fonts, or layout. Extract the source's design tokens **and** layout structure directly from its rendered output, then mirror them deterministically in `docs.json`, MDX, and `custom.css`. Eyeballing or inferring from prose produces "close-but-wrong" results that fail QA.
