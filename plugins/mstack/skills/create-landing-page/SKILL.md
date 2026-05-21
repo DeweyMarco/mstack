@@ -27,6 +27,31 @@ When the task is migrating or replicating a company's docs site, mirror the sour
 - Use Mintlify-native components or Tailwind utilities to implement the structure, but do not swap in a generic docs-template layout just because it looks cleaner.
 - If a source element cannot be reproduced safely in Mintlify, approximate it visibly and record the delta for `/preview-qa` and `/han-review`.
 
+### Pull source assets, do not fabricate them
+
+The single most common landing-page regression is reaching for "tasteful" gradients, glows, or purple backgrounds when the source has none. The fix is always cheaper at authoring time than after a reviewer flags it: open the source page, identify what's actually rendered, and ship that.
+
+Concretely:
+
+1. **Fetch the hero background image from the source CDN.** Most marketing-style docs landings ship a single hero asset (`banner_bg.png`, `hero.svg`, etc.) referenced from the source HTML. Download it to `/images/hero-banner.png` (or similar) and use it as the hero background, instead of recreating it with Tailwind gradients. Eyeballed gradients never match.
+2. **Pixel-sample the source's section backgrounds.** If the source uses a single white background under everything except the hero, do not add gray section bands, purple gradient callouts, or tinted card backgrounds. Sample the source body bg at four points; if uniform, every non-hero section gets the same flat background.
+3. **Match featured-card backgrounds to the source's actual tile colors.** Source sites usually use soft pastel fills (lavender `#f4f3fd`, light lavender, cream) on featured cards — *not* the brand color at full saturation. Sample one card per row.
+4. **Replicate FAQ / accordion content verbatim.** When the source landing has an FAQ section, port every question + answer into a Mintlify `<AccordionGroup>` with internal links rewritten to the new Mintlify routes. Don't summarize, reorder, or pick a subset.
+5. **Mirror "Recently updated / Recently added / Most popular" rails when present.** These are part of the source's landing IA; dropping them feels like missing content. If the data isn't accessible programmatically, hard-code the items the source currently shows and add a note in the parity manifest about how to refresh them.
+
+When in doubt, screenshot the source landing and the preview side-by-side at the same viewport. Anything that looks "extra" (a gradient the source doesn't have, a callout color shifted toward the brand) is a defect, not polish.
+
+### Adapt logos for light + dark
+
+Customer logos almost always need both variants, and the source usually only ships one:
+
+- Download the primary logo asset from the source CDN.
+- Resize to a navbar-friendly height (~48px tall; preserve aspect ratio).
+- Ship `/logo/<customer>-light.<ext>` as the source asset directly.
+- Generate `/logo/<customer>-dark.<ext>` by inverting the wordmark to white (Pillow / ImageMagick — `convert in.png -channel RGB -negate out.png` for simple wordmarks, or invert by alpha mask for composed marks).
+- The icon mark (separate from the wordmark) usually doesn't need inverting — verify against the source dark-mode rendering if the source supports a theme toggle.
+- Save the 48×48 icon mark separately as `/favicon.png`.
+
 ## Critical Mintlify Gotchas (read this before writing any JSX)
 
 These issues cost real time on past projects. Account for them upfront.
