@@ -44,6 +44,27 @@ Run these first; they are cheapest and catch the largest class of defects.
 - [ ] `mint a11y` warnings either fixed or explicitly accepted in the QA report.
 - [ ] **No root `custom.js`** (or any other `.js` file at the repo root) is being relied on for runtime behavior. Mintlify v4 does not execute root-level JS — it inlines the file as Next.js data and never runs it. If a `custom.js` exists, verify whether it is dead code (delete) or whether the behavior it tries to provide should be re-routed to native Mintlify config, a build-time `docs.json` updater, or GTM. See `style-docs/SKILL.md` → *Custom JavaScript rules* and `style-docs/reference.md` → *No arbitrary custom JavaScript in Mintlify*.
 
+### Gate 1.5 — Port-artifact sweep (for HTML-scraped sources)
+
+`mint validate` accepts dozens of malformed-but-parseable patterns that render as visibly broken Cards, Steps, code blocks, and admonitions. Run this gate **after** Gate 1 and **before** Gate 2 — every regex below must return zero hits before continuing. These patterns are documented in full (with detection commands and corrected MDX) at `docs-to-mintlify/references/mdx-conversion.md → Port-artifact patterns to detect and fix in the transformer`. If any hit, route to that reference and patch the originating transformer rule before regenerating the affected files; do not hand-fix individual pages, the patterns recur across hundreds of files.
+
+- [ ] **Pattern A — broken-card link smash:** multi-line `[emoji\n\n#### Title\n\nbody](url)` blocks. Run:
+  `python3 -c "import re,glob; print(sum(1 for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'\[\s*[\U0001F000-\U0001FFFF☀-➿][^\]]*?####[^\]]*?\]\([^)]+\)', open(f).read(), re.DOTALL)))"`
+- [ ] **Pattern B — inline emoji card:** `[📋Title](url)` with emoji glued to label. Run:
+  `grep -rlE '\[[^a-zA-Z0-9 ]+[A-Z][^]]+\]\([^)]+\)' --include='*.mdx' . | wc -l`
+- [ ] **Pattern C — broken Steps:** link-wrapped `[1\n\n### Title\n\nbody](url)`. Run:
+  `python3 -c "import re,glob; print(sum(1 for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'\[\s*\d+\s*\n\s*\n\s*###[^\]]+\]\([^)]+\)', open(f).read(), re.DOTALL)))"`
+- [ ] **Pattern D — orphan emoji + heading + body (no bracket anchor):** the trap pattern; do not skip even if Pattern A is clean. Run:
+  `python3 -c "import re,glob; print(sum(1 for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'^[\U0001F000-\U0001FFFF☀-➿]\s*\n\s*\n####\s', open(f).read(), re.MULTILINE)))"`
+- [ ] **Pattern E — `prism-code` fences:** `grep -rl '\`\`\`prism-code' --include='*.mdx' . | wc -l`. Each hit is a code block with disabled syntax highlighting.
+- [ ] **Pattern F — Docusaurus admonitions in frontmatter:** `grep -rlE '^description:\s*"?:::' --include='*.mdx' . | wc -l`. Each hit renders `:::warning` literally under the page H1.
+- [ ] **Pattern G — HTML escape leakage outside code fences:** placeholders like `&lt;bucket&gt;` or raw `<bucket>` rendering as JSX. Visually spot-check 10 connector / SDK reference pages.
+- [ ] **Pattern H — orphan `---` rules:** `python3 -c "import re,glob; print(sum(1 for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'^---\s*\n\s*\n---', open(f).read(), re.MULTILINE)))"`
+- [ ] **Pattern I — whole-page link-smash:** open every `index.mdx`, `overview.mdx`, and `all-*.mdx` in `mint dev`. Any page where the body renders as one giant clickable region is a link-smash and needs hand rebuild into a `<CardGroup>`.
+- [ ] **Pattern J — source chrome leakage:** `grep -rlE '^(Copy page|Edit on GitHub|Was this helpful)' --include='*.mdx' . | wc -l`
+
+On any non-zero result → route to `/docs-to-mintlify` and patch the transformer rule. **Do not** hand-fix individual files; the bug is in the conversion and will recur the next time the corpus is regenerated.
+
 ### Gate 2 — Source-mirror parity (per page)
 
 For each preview page that mirrors a source URL:
@@ -140,6 +161,7 @@ Format:
 | Gate | Status | Notes |
 |------|--------|-------|
 | 1. Config + validation         | PASS / FAIL | mint validate clean; mint broken-links clean |
+| 1.5. Port-artifact sweep       | PASS / FAIL | 10 patterns checked; zero hits on A–J |
 | 2. Source-mirror parity        | PASS / FAIL | <count> pages diffed; <count> mismatches fixed |
 | 3. Chrome parity               | PASS / FAIL | per-dropdown anchors verified for <sections> |
 | 4. Collapsibility parity       | PASS / FAIL | wrapper-group demotion applied to <tabs> |
@@ -157,6 +179,7 @@ If any gate is FAIL, list the specific defects and fix them before re-running. D
 |------|--------------|----------|
 | 1 | Broken links | `/fix-broken-links`, then re-run from Gate 1 |
 | 1 | Orphan MDX or nav gaps | `/style-docs` "Restructuring large flat navigation" |
+| 1.5 | Any port-artifact pattern (A–J) returns >0 hits | Route to `/docs-to-mintlify` and patch the transformer rule named in `docs-to-mintlify/references/mdx-conversion.md` → "Port-artifact patterns". Regenerate the affected files; do **not** hand-fix individual pages. After regeneration re-run from Gate 1 |
 | 2 | Body structure / repeated patterns missing | Fix in place (minimum-diff); `/style-docs` only if scope is broad |
 | 2 | Custom HTML where Mintlify primitive should be | Fix in place per `style-docs/SKILL.md` "Edit existing components in place" |
 | 2 | Fabricated `description` (subtitle on preview that source doesn't have) | Delete the `description:` line from the page's frontmatter. Do not move the text into the body. If the same fabrication appears across many pages, it likely came from `/docs-to-mintlify` — patch the conversion rule per `docs-to-mintlify/references/mdx-conversion.md` "Description" before regenerating |

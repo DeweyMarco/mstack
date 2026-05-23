@@ -25,7 +25,7 @@ Choose the simplest mode that supports the desired UX.
 
 Prefer site-wide settings over one-off page styling:
 
-- `theme`
+- `theme` — default to `luma` unless the user explicitly requests a different theme.
 - `colors.primary`, `colors.light`, `colors.dark`
 - `logo.light`, `logo.dark`
 - `favicon.light`, `favicon.dark`
@@ -106,6 +106,26 @@ Mintlify renders every page into a small, stable set of layout regions. Most sty
 | Footer | `footer`, `#footer` | |
 
 Confirm the live DOM in the running `mint dev` preview before targeting these — Mintlify occasionally renames internals across major versions. Use the browser inspector or a Playwright/Puppeteer one-liner that prints `document.querySelector('#sidebar-content')` to verify before writing CSS.
+
+### Sidebar width and content-shift pitfall
+
+When the user asks to "widen the sidebar" or "make the left nav slightly wider", **only override the sidebar's own width**. Do not add a content-shift rule (`margin-left`, `padding-left`, `transform: translateX(...)`) to `#content-area`, `main`, or `body`. Mintlify already offsets the article container by the sidebar's width through its own layout system; any additional shift in `custom.css` double-shifts the content and produces a visible blank gutter on the homepage (and every other page).
+
+The canonical failure (Atlan port session): the user asked for a wider sidebar. The fix CSS shipped two rules — one widening `#sidebar-content`, and a second `main { margin-left: 320px; }` to "make room". The second rule was redundant *and* wrong: Mintlify's own layout already accounts for the new width, so adding `margin-left: 320px` shifted the homepage 320px further right than every other page (because `mode: custom` pages, like the homepage, do not inherit Mintlify's standard `main` container styling and so were only shifted by the extra rule, not by the framework's offset). Result: a "weird left margin" on the home page only. Removing the second rule and keeping only the width override fixed it.
+
+Canonical pattern:
+
+```css
+/* CORRECT: widen the sidebar only; let Mintlify handle the offset. */
+#sidebar-content {
+  width: 320px !important;
+}
+
+/* WRONG: do not also shift the content. Mintlify already offsets `main`. */
+/* main, #content-area { margin-left: 320px !important; } */
+```
+
+If you actually do see content under the sidebar after widening (overlap rather than just narrower margins), the fix is to find the variable or selector Mintlify uses to compute the offset and override that — not to layer a sibling margin rule on top of the framework's own offset. Verify in `mint dev` on both `mode: default` pages and `mode: custom` homepage before declaring done; a content-shift bug usually shows up on the homepage first because custom-mode pages bypass Mintlify's standard container.
 
 ### Multi-tone background layouts
 

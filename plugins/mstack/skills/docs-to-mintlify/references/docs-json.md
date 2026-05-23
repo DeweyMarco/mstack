@@ -36,6 +36,27 @@ Rule for navbar generation:
 
 This is `/preview-qa` Gate 3's "Top horizontal-bar single-row parity" check — generating the right shape upfront avoids the post-hoc cleanup.
 
+#### Per-tab sidebar parity for multi-tab sites
+
+Mintlify's per-tab nav model means **every top-level tab has its own independent sidebar** (`tabs[i].groups[]`). For sites with 5+ top-level tabs (developer portals, product hubs, enterprise docs platforms), the conversion is not "one nav" but "N navs" — and each tab's sidebar must mirror the **source's sidebar for that same tab**, not be inferred from the file tree.
+
+The recurring failure mode: a transformer flattens the file system into one top-level tab and dumps every other tab's pages into a generic `Reference` or `Misc` group. JSON validates, every page is reachable, every link works — but the sidebar on `/connect-data/*` shows BI tools next to changelog entries next to admin SDK references, none of which the source has in that sidebar.
+
+Mirror per-tab. For each tab the source has:
+
+1. **Fetch the source tab's rendered sidebar** — not via WebFetch's summarization but via Chrome MCP / `mcp__claude-in-chrome__*` so you can read the actual DOM hierarchy of the sidebar tree. WebFetch collapses nested groups into flat link lists and silently loses the group/subgroup structure.
+2. **Capture the visible group order, subgroup order, and per-page sidebar label.** Top-level groups become `groups`, nested groups become `groups[].pages[]` with a nested `{ "group": ..., "pages": [...] }` shape. Subgroup labels visible in the source must appear verbatim in `docs.json`.
+3. **Map every page in the source's tab sidebar to a converted MDX file** using the parity manifest's `normalized_path`. Pages that exist in the file tree but are not in the source tab's sidebar belong to a different tab — do not include them.
+4. **Emit one tab's groups at a time.** When restructuring an existing site, do not edit multiple tabs' `groups` in the same pass — agents working in parallel collide on the same `docs.json`, and the merge is hard to reason about. The session that produced this skill ran five tab-restructure agents serially (or with explicit non-overlapping ownership) for exactly this reason.
+5. **Validate per tab.** After each tab is emitted, `mint validate` must pass and the count of pages in that tab must equal the count of source pages in the same tab's sidebar (modulo intentional `excluded` entries in the parity manifest).
+
+Anti-pattern to avoid: emoji / Font Awesome icons on top-level tabs in `navigation.tabs[].icon` when the source does not use them. Mintlify renders these as visible chips next to the tab label. Strip every `icon:` from `tabs[]` unless you can point at the matching glyph on the source — the session shipped `rocket`, `plug`, `magnifying-glass-chart`, `shield-halved`, `sliders`, `code`, `circle-question` on tabs that the source displayed as plain text labels, and they all had to be ripped out later.
+
+Verification:
+
+- Open the live source in Chrome (`mcp__claude-in-chrome__navigate`), click each tab, screenshot the sidebar, and compare side-by-side against `mint dev` on the same tab path.
+- Repeat for every tab. Per-tab parity is `/preview-qa` Gate 3's "Per-page sidebar parity (no stacked sidebars)" check — emitting the right per-tab structure upfront is far cheaper than restructuring later.
+
 For OpenAPI-backed sections, reference the spec directly on the group. Do not list auto-generated endpoint pages manually:
 
 ```json

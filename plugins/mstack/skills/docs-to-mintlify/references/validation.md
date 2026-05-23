@@ -35,6 +35,47 @@ After copying transformer output into the repo with `cp -R`, list the tree for f
 - No broken internal links; update hrefs to match new file paths.
 - Run `mint dev` or `mint validate` after `mint broken-links` is parser-clean.
 
+## Port-Artifact Sweep (mandatory for HTML-scraped sources)
+
+`mint validate` and `mint broken-links` only catch parser-level breakage. They do **not** catch content that parses fine but renders as visibly broken cards, steps, code blocks, or admonitions — the nine "port-artifact" patterns documented in [mdx-conversion.md → Port-artifact patterns to detect and fix in the transformer](mdx-conversion.md).
+
+Before declaring the conversion complete, run a sweep for every pattern and confirm zero hits. The session that produced this skill shipped 1,914 pages with all parser gates clean and then discovered 400+ pages of broken rendering — `/preview-qa` and four agent sweeps later, the cleanup was still not complete. Catch it here, not after.
+
+Sweep commands (run from repo root):
+
+```bash
+# Pattern A — broken-card link smash (multi-line)
+python3 -c "import re,glob; [print(f) for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'\[\s*[\U0001F000-\U0001FFFF☀-➿][^\]]*?####[^\]]*?\]\([^)]+\)', open(f).read(), re.DOTALL)]"
+
+# Pattern B — inline emoji card
+grep -rlE '\[[^a-zA-Z0-9 ]+[A-Z][^]]+\]\([^)]+\)' --include='*.mdx' .
+
+# Pattern C — broken Steps (link-wrapped numbers)
+python3 -c "import re,glob; [print(f) for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'\[\s*\d+\s*\n\s*\n\s*###[^\]]+\]\([^)]+\)', open(f).read(), re.DOTALL)]"
+
+# Pattern D — orphan emoji + heading + body (no bracket anchor)
+python3 -c "import re,glob; [print(f) for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'^[\U0001F000-\U0001FFFF☀-➿]\s*\n\s*\n####\s', open(f).read(), re.MULTILINE)]"
+
+# Pattern E — prism-code fences
+grep -rl '```prism-code' --include='*.mdx' .
+
+# Pattern F — Docusaurus admonitions in frontmatter
+grep -rlE '^description:\s*"?:::' --include='*.mdx' .
+
+# Pattern G — HTML escape leakage in prose
+grep -rl '&lt;\|&gt;' --include='*.mdx' . | xargs -I{} grep -L '```' {} 2>/dev/null
+
+# Pattern H — orphan --- rules
+python3 -c "import re,glob; [print(f) for f in glob.glob('**/*.mdx', recursive=True) if re.search(r'^---\s*\n\s*\n---', open(f).read(), re.MULTILINE)]"
+
+# Pattern J — source chrome leakage
+grep -rlE '^(Copy page|Edit on GitHub|Was this helpful)' --include='*.mdx' .
+```
+
+Pattern I (whole-page link-smash) cannot be reliably grepped — surface it by sampling 10–20 index-style pages (`overview.mdx`, `index.mdx`, `all-*.mdx`) and reading the first paragraph in `mint dev`.
+
+Every sweep must return zero results before parity gate. If any returns hits, fix the transformer rule (not the file output) and re-run the full conversion.
+
 ## Parity Gate
 
 Before finishing:
