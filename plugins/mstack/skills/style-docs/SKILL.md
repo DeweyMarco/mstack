@@ -163,7 +163,7 @@ When the source's chrome shows a product selector next to the logo (clickable la
 
 Two non-obvious constraints that cost real time when missed:
 
-1. **Theme matters.** `navigation.products` renders as a navbar dropdown next to the logo only on themes that support it — `luma` and `aspen` confirmed working. On `maple`, the same config falls through to a sidebar-rendered selector, which usually looks like a defect. If the customer asks for "the Benchling-style product picker", verify `docs.json` is on `luma` first; switch themes before debugging the config.
+1. **Theme matters — and mstack is always on `luma`.** `navigation.products` renders as a navbar dropdown next to the logo only on themes that support it (`luma` and `aspen` confirmed working). On `maple` the same config falls through to a sidebar-rendered selector that looks like a defect — one of several reasons mstack never uses `maple` (see *Theme choice affects the navbar architecture* below and `create-landing-page` → Gotcha 2 → "Theme policy"). Because every mstack preview is on `luma`, the product selector just works; if you ever encounter a `maple` site, convert it to `luma` before debugging the config.
 2. **Flatten `products[*].tabs` into `products[*].groups`.** Each product can contain `tabs` *or* `groups`. Leaving `tabs` in place renders a second tab row in the navbar (below the product selector), crowding out the selector label. Each product's groups should sit directly in the sidebar so the navbar only shows: logo · `<Product selector>` · search · utility links · CTA.
 
 Canonical shape:
@@ -313,6 +313,10 @@ Pick the chrome strategy before building the landing:
 - **Bespoke header (occasional).** Only when the source's marketing site has a navbar that *cannot* be replicated with `docs.json` alone (composed logo + tagline, multi-row chrome, unusual layout) and the customer explicitly wants it on the homepage only. Accept that the chrome shift will be visible and ship the bespoke header at pixel parity with the standard navbar's height, font weights, and spacing.
 
 Default to shared chrome. The bespoke-header path almost always produces the "jarring shift" feedback within a review cycle; switching back is cheap (the existing hero + sections survive intact), so prefer to start there.
+
+#### Theme choice affects the navbar architecture (full-bleed heroes)
+
+**mstack always uses `luma` and never `maple`** — and the navbar architecture is the main reason. A full-bleed hero homepage under a full-width sticky navbar is free on `luma` (one full-width sticky `header#navbar`) but expensive on `maple`, which splits the nav into a fixed logo `#sidebar` plus a separate `#navbar-transition-maple` tab strip starting at x≈304px — a full-bleed hero bleeds through both and the bar isn't full-width or solid on scroll without ~100+ lines of fragile CSS. Set `"theme": "luma"` on every site; if you inherit a `maple` site (or `mint init` scaffolds one), convert it to `luma` rather than writing CSS to fake the bar. Theme is site-wide, so re-check a normal content page after switching. This is the same class of theme-sensitivity as `navigation.products` above; see `create-landing-page` → Gotcha 2 → "Theme policy" for the DOM detail.
 
 ## Matching a source site's branding
 

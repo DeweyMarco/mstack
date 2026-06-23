@@ -180,7 +180,7 @@ Group ordering inside Developer Portal — fix once and respect everywhere:
 
 **Mirror the order in the product description.** If the description says "CLI, API reference, and SDK", reorder it to "API reference, CLI, and SDK" so the sentence matches the group order. Reviewers notice this kind of mismatch immediately; readers parse it as either a typo or as an indication that the docs were stitched together without a final pass.
 
-When wiring this up in `docs.json`, follow the same `navigation.products` rules from `style-docs` (luma/aspen theme, `groups` not `tabs` inside each product, hide the duplicate sidebar copy of the product selector).
+When wiring this up in `docs.json`, follow the same `navigation.products` rules from `style-docs` (on the `luma` theme that mstack always uses, `groups` not `tabs` inside each product, hide the duplicate sidebar copy of the product selector).
 
 ## Avoid Duplicates
 

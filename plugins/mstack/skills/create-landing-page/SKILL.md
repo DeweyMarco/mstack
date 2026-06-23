@@ -14,7 +14,7 @@ Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`
 3. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
 4. If the user provided an original docs/homepage URL, inspect its rendered page plus raw HTML/CSS for visible colors, logo, favicon, hero/background media, top-level layout, section order, card counts, CTA labels, and footer/header structure before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
 5. Confirm which docs pages already exist so all card/button `href` values point to real paths.
-6. Verify the `mint` CLI runs and the `data-docs-theme` in use. The recommended default is `luma`; other supported themes are `maple`, `mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, and `sequoia`. For greenfield docs.json files, set `"theme": "luma"` unless the customer asks for something else.
+6. Verify the `mint` CLI runs and the `data-docs-theme` in use. **mstack always uses `luma` and never `maple`** — set `"theme": "luma"` for greenfield `docs.json`, and convert any inherited or `mint init`-scaffolded `maple` site to `luma` before building the landing page (see Gotcha 2 → "Theme policy"). The other supported themes (`mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, `sequoia`) are only for an explicit, specific customer request; `maple` is never an option.
 7. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
 
 ## Replica-first landing rule
@@ -90,9 +90,18 @@ There are two viable landing-page architectures, and they call for different CSS
 
 If you reach for Strategy A out of habit and the source actually uses Strategy B, every reviewer will flag the jarring transition between `/` and `/<any-other-page>`. When in doubt, pick B.
 
+#### Theme policy: always `luma`, never `maple`
+
+**mstack standardizes on the `luma` theme for every preview, and never uses `maple`.** The reason is structural — it comes down to the navbar architecture:
+
+- **`luma` renders one full-width, sticky `header#navbar`** holding the logo, tabs, and actions together. It spans the page and stays put on scroll natively, and a full-bleed hero sits flush beneath it with **zero** custom nav/sidebar CSS — just the Strategy B chrome trims below.
+- **`maple` splits the nav**: the logo lives in a fixed left `#sidebar` (transparent background) while the tabs live in a *separate* fixed `#navbar-transition-maple` strip that only starts at x≈304px — both transparent with a backdrop-blur. A full-bleed hero then bleeds *up through* the transparent nav, the bar isn't full-width, the logo zone sits behind the hero on scroll, and the logo is hidden entirely on a `mode: "custom"` page (maple keeps it in the sidebar that custom mode collapses). Reassembling one solid, full-width, fixed bar — z-lifting `#sidebar` above the hero, painting matching white backings on both halves, killing the backdrop-blur, pushing the hero down with `padding-top` — takes ~100+ lines of fragile, version-sensitive CSS.
+
+So: set `"theme": "luma"` on every site. If you inherit a `maple` site (or `mint init` scaffolds one), **convert it** — switch `"theme": "maple"` → `"luma"` in `docs.json` before doing any landing-page work. It provides the full-width sticky bar for free and collapses `custom.css` back to the Strategy B trims. Theme is site-wide, so re-check a normal content page after switching. **Never write CSS to fake `maple`'s navbar; switch the theme instead.** (The Strategy B selectors below are tested against `luma`.)
+
 #### Strategy A — Chromeless landing (the original Gotcha 2)
 
-**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `luma` theme (the mstack default); other themes (`maple`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
+**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `luma` theme, which mstack uses for every preview (see Gotcha 2 → "Theme policy" — `maple` is never used):
 
 ```css
 /* custom.css at the repo root */
@@ -365,6 +374,15 @@ Only build one when the brand's marketing site has a distinctive navbar you are 
 - Primary CTA button (brand background, links to quickstart) + secondary CTA button (outline style).
 - Buttons: `rounded-lg`/`rounded-full`, hover transitions, `flex-wrap` + `gap-3`/`gap-4`, actionable text.
 - If hero image: `alt` attribute, `noZoom`, responsive sizing, light/dark variants if needed.
+
+#### Hero search box / "Ask AI" chips — deep-link into the assistant
+
+When the source homepage leads with a prominent search bar or "popular question" chips (common on help-center / knowledge-base landings), wire them to Mintlify's built-in AI assistant instead of building a separate search page or route. Mintlify intercepts an `?assistant=<url-encoded query>` param on any page — it opens the assistant panel and auto-submits that query:
+
+- **Search bar:** a GET `<form>` on the current URL whose submit produces `?assistant=<the typed text>`.
+- **Popular-question chips:** plain `<a href="?assistant=How%20do%20I%20reset%20my%20password%3F">` pills — each deep-links a pre-encoded question straight into the assistant.
+
+This needs zero JS and no search route. Confirm the AI assistant is enabled for the project first (it depends on the site's AI features being on).
 
 #### Adaptive hero & CTA backgrounds (required for any tinted/dark section)
 

@@ -31,6 +31,10 @@ mstack/
                 └── reference.md                  # extended design heuristics
 ```
 
+## Conventions
+
+- **Theme: always `luma`, never `maple`.** Every mstack preview uses the `luma` theme. `luma`'s single full-width sticky navbar handles full-bleed hero homepages, `navigation.products` selectors, and homepage↔content chrome continuity natively; `maple`'s split navbar repeatedly costs hours of fragile CSS. `mint init` scaffolds `maple` — always overwrite it with `luma`, and convert any inherited `maple` site before styling. Deviate to another supported theme only on an explicit, specific customer request; `maple` is never an option. Detail lives in `create-landing-page` → Gotcha 2 → "Theme policy" and `docs-to-mintlify/references/docs-json.md`.
+
 ## Development
 
 Each skill lives in `plugins/mstack/skills/<name>/SKILL.md` with YAML frontmatter:

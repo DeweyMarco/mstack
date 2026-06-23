@@ -25,7 +25,7 @@ Choose the simplest mode that supports the desired UX.
 
 Prefer site-wide settings over one-off page styling:
 
-- `theme` — default to `luma` unless the user explicitly requests a different theme.
+- `theme` — **always `luma`; never `maple`.** `luma` is the mstack standard for every preview; convert inherited or `mint init`-scaffolded `maple` sites to `luma`. Deviate to another supported theme only on an explicit, specific customer request — `maple` is never an option. See `create-landing-page` → Gotcha 2 → "Theme policy".
 - `colors.primary`, `colors.light`, `colors.dark`
 - `logo.light`, `logo.dark`
 - `favicon.light`, `favicon.dark`
