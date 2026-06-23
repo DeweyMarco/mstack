@@ -65,6 +65,7 @@ Load only the reference files needed for the current conversion:
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - For OpenAPI-backed sections, reference the spec with the `openapi` key instead of listing generated endpoints manually.
 - Ensure every converted site has the root-level `contextual` menu config.
+- Always set `seo.metatags.robots` to `noindex` so the preview deployment is never indexed by search engines.
 - Validate JSON after every structural edit.
 - Read [references/docs-json.md](references/docs-json.md) before editing `docs.json`.
 
@@ -89,6 +90,7 @@ Load only the reference files needed for the current conversion:
 - A repo-local parity manifest exists and includes `source_url`, `normalized_path`, `converted_file`, `nav_section`, `status`, and `notes` for every discovered page.
 - Every created `.mdx` file appears in the `docs.json` navigation tree.
 - `docs.json` includes root-level `contextual` config.
+- `docs.json` sets `seo.metatags.robots` to `noindex`.
 - If API docs exist, every OpenAPI spec is referenced from `docs.json` and paired with root-level `api` config.
 - `mint broken-links` reports zero parser errors before `mint dev` verification.
 - The repo is parser-clean in Mintlify, not merely visually plausible in edited files.
