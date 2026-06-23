@@ -20,7 +20,7 @@ For migrations whose goal is to match an existing site, every top-level chrome e
 - `navbar.links` — only the right-side utility text links the source actually anchors to the right of the navbar (e.g. sign-in, contact). Items the source shows in its inline horizontal row do not belong here even when they are external.
 - `navbar.primary` — the single right-side CTA button. Absent if the source has no CTA.
 - `footer.socials` and `footer.links` — only what appears on the source footer. Default Twitter/GitHub socials from the starter are the most common parity miss.
-- `seo.metatags` — mirror the source's meta description and OG tags, not Mintlify's defaults.
+- `seo.metatags` — mirror the source's meta description and OG tags, not Mintlify's defaults. **Always merge in `"robots": "noindex"`** (see *Search-engine indexing* below) — mirroring the source's other metatags does not exempt the preview from this.
 - **Default mode is remove, not add.** When unsure whether the source has a feature, delete it from `docs.json` and re-add only after confirming on the live site. Extras survive every other QA pass because they look "normal" — the only way to catch them is to audit each chrome field against a fresh `curl` of the source.
 
 #### One visible horizontal row = one config surface
@@ -66,6 +66,23 @@ For OpenAPI-backed sections, reference the spec directly on the group. Do not li
 ```json
 { "group": "Core API", "openapi": { "source": "openapi/core.json", "directory": "api-reference" } }
 ```
+
+## Search-engine indexing
+
+Every generated `docs.json` must keep the preview out of search-engine indexes. Set `seo.metatags.robots` to `noindex`:
+
+```json
+"seo": {
+  "metatags": {
+    "robots": "noindex"
+  }
+}
+```
+
+- This is **mandatory and non-negotiable** — these are preview deployments, not the customer's production site, and must never be indexed.
+- Add it even when preserving or mirroring other `seo` fields (meta description, OG tags). Merge `"robots": "noindex"` into the existing `seo.metatags` block rather than dropping the mirrored tags.
+- If the source site or an existing `docs.json` already sets `robots` to something else, override it to `noindex`.
+- This overrides the "preserve customer-authored `seo`" rule above for the `robots` key specifically.
 
 ## Contextual Menu
 
