@@ -15,6 +15,7 @@ Load only the reference files needed for the current conversion:
 - For frontmatter, component conversion, MDX safety, and link rewriting: read [references/mdx-conversion.md](references/mdx-conversion.md).
 - For GitBook sources or any `{% ... %}` / `data-gb-custom-block` export syntax: read [references/gitbook.md](references/gitbook.md).
 - For API or endpoint documentation: read [references/openapi.md](references/openapi.md).
+- For changelog / release-notes / "What's new" sections: read [references/changelogs.md](references/changelogs.md).
 - For `docs.json`, navigation, OpenAPI wiring, and the contextual menu: read [references/docs-json.md](references/docs-json.md).
 - For parser checks, broken links, parity gates, and final QA: read [references/validation.md](references/validation.md).
 
@@ -49,18 +50,21 @@ Load only the reference files needed for the current conversion:
 - Add clean frontmatter and remove duplicated H1s.
 - Replace source patterns with Mintlify components where equivalent: callouts, steps, cards, tabs, accordions, code blocks, parameter fields, response fields, and tooltips.
 - Never add "clone", "preview", or "migration" to page content or filenames.
+- Changelog / release-notes sections do **not** convert page-per-entry: consolidate them into a single `<Update>` timeline page with `rss: true`, real publish dates (not sitemap `lastmod`), and redirects preserving per-entry URLs. Read [references/changelogs.md](references/changelogs.md) before converting one.
 - Read [references/mdx-conversion.md](references/mdx-conversion.md), and read [references/gitbook.md](references/gitbook.md) for GitBook sources.
 
 ### 5. Handle API Docs Only When Present
 
 - First determine whether the source has API or endpoint docs. Skip this step entirely for pure content sites.
 - If API docs exist, create one OpenAPI spec per product, wire each spec into `docs.json`, add the root-level `api` config, and verify that the playground renders.
+- When the source has hand-written per-endpoint pages (ReadMe.com reference sections are the canonical case), overlay the playground on those migrated pages with per-page `openapi:` frontmatter — never mount the spec as a separate auto-generated tab/group duplicating the same operations at a second URL space. See [references/openapi.md](references/openapi.md) → "Hand-migrated endpoint pages + a spec".
 - Do not leave unreferenced OpenAPI specs or duplicate hand-written endpoint pages.
 - Read [references/openapi.md](references/openapi.md) before authoring or wiring API reference content.
 
 ### 6. Build or Update docs.json
 
 - Mirror the live site's navigation structure for all discovered in-scope pages.
+- Mirror nesting depth, not just membership: when a source sidebar entry has child pages beneath it (ReadMe parent pages with children, GitBook nested items), model it as a **nested group** whose first page is the parent page carrying `sidebarTitle: "Overview"` so its label doesn't duplicate the group name. Never flatten a parent's children into siblings — a flat list where the source shows an expandable sub-group is a nav-parity defect.
 - Use `tabs` or `products` according to the existing repo pattern.
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - For OpenAPI-backed sections, reference the spec with the `openapi` key instead of listing generated endpoints manually.
@@ -91,6 +95,7 @@ Load only the reference files needed for the current conversion:
 - Every created `.mdx` file appears in the `docs.json` navigation tree.
 - `docs.json` includes root-level `contextual` config.
 - `docs.json` sets `seo.metatags.robots` to `noindex`.
-- If API docs exist, every OpenAPI spec is referenced from `docs.json` and paired with root-level `api` config.
+- If API docs exist, every OpenAPI spec is referenced from `docs.json` and paired with root-level `api` config, and no operation is exposed at two URL spaces (hand-migrated page + auto-generated playground page).
+- If the source has a changelog, it is a single `<Update>` timeline page with `rss: true`, dates matching the source's real publish dates, and redirects covering every per-entry source URL.
 - `mint broken-links` reports zero parser errors before `mint dev` verification.
 - The repo is parser-clean in Mintlify, not merely visually plausible in edited files.

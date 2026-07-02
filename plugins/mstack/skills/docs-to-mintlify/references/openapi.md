@@ -182,10 +182,33 @@ Group ordering inside Developer Portal — fix once and respect everywhere:
 
 When wiring this up in `docs.json`, follow the same `navigation.products` rules from `style-docs` (on the `luma` theme that mstack always uses, `groups` not `tabs` inside each product, hide the duplicate sidebar copy of the product selector).
 
+## Hand-migrated endpoint pages + a spec: overlay, never a parallel tab
+
+When the source has one hand-written page per endpoint (ReadMe.com reference sections are the canonical case) **and** you have or can assemble an OpenAPI spec, do **not** mount the spec as a separate auto-generated group or tab. That creates two URL spaces for the same operations — the migrated prose pages at the source's paths and a parallel "API Playground" set of generated pages — and reviewers flag the split immediately ("why are the API Reference and API Playground separated?").
+
+Instead, overlay the interactive playground onto each existing migrated page with per-page frontmatter:
+
+```mdx
+---
+title: "Get Loads"
+openapi: "GET /api/p/v{version}/loads"
+---
+
+...the hand-migrated prose from the source page...
+```
+
+- The page keeps its migrated prose **and** gains Mintlify's Send Request panel, base URL, and auto-generated code samples for the referenced operation — all at the source's original URL.
+- The method + path must match the spec's `paths` entry exactly. When the site has multiple specs, use the spec-qualified form: `openapi: "openapi/core.json GET /loads"`.
+- Prose-only pages in the same section (overview, authentication, webhook lifecycle) simply omit the directive.
+- Root-level `api` config in `docs.json` is still required for the playground and code-sample languages to render.
+- Persist the page → operation mapping in the transformer script so regenerating the corpus preserves the wiring.
+
+**ReadMe sources ship the spec inline.** Every ReadMe reference page embeds its operation's OpenAPI fragment in an `# OpenAPI definition` JSON block. Extract those fragments during the crawl and merge them into one spec per product (dedupe shared `components.schemas`, union `tags`) instead of hand-authoring a spec from prose.
+
 ## Avoid Duplicates
 
 - If endpoint pages are generated from OpenAPI, do not also hand-author endpoint MDX files for the same operations.
-- If source endpoint pages contain rich content beyond the spec, keep them in a separate group such as "Extended Guides" so they do not collide with generated API pages.
+- If source endpoint pages contain rich content beyond the spec, overlay the playground on them with per-page `openapi:` frontmatter (previous section) rather than keeping generated pages and prose pages side by side.
 
 ## Verify Playground Rendering
 

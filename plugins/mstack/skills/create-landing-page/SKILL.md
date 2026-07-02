@@ -86,7 +86,7 @@ There are two viable landing-page architectures, and they call for different CSS
 
 **A. Chromeless landing with a bespoke header (the rest of this gotcha).** Use when the source's marketing site has a distinctive navbar (custom logo composition, marketing nav, demo CTA) that you want to replicate on the homepage *only*. Drawback: the chrome shift between `/` and every other docs page is visible and jarring unless the bespoke header is pixel-identical to Mintlify's tab strip.
 
-**B. Shared chrome with a hidden right rail.** Recommended when the surrounding docs use Mintlify's standard navbar + tab strip (Stripe, HubSpot, Vercel, and most modern dev-docs sites do this). The landing page keeps `mode` *unset* (or `mode: "wide"`), reuses the same navbar + tabs as every other page, and only hides the sidebar, TOC, page header, and footer-nav on `/`. Result: zero visible seam between the landing and the rest of the docs.
+**B. Shared chrome via `mode: "custom"`.** Recommended when the surrounding docs use Mintlify's standard navbar + tab strip (Stripe, HubSpot, Vercel, and most modern dev-docs sites do this). Set `mode: "custom"` on `index.mdx` — on the `luma` theme this keeps the same navbar + tabs as every other page while natively hiding the sidebar, TOC, auto page header, and footer-nav on `/`. Result: zero visible seam between the landing and the rest of the docs. (`mode: "wide"` does **not** hide the sidebar — see Strategy B below.)
 
 If you reach for Strategy A out of habit and the source actually uses Strategy B, every reviewer will flag the jarring transition between `/` and `/<any-other-page>`. When in doubt, pick B.
 
@@ -143,57 +143,36 @@ Why each rule matters:
 
 #### Strategy B — Shared chrome (Stripe / HubSpot / Vercel pattern)
 
-When the homepage should reuse Mintlify's standard navbar and tab strip, **drop `mode: "custom"` entirely** from `index.mdx` (use a normal frontmatter, or set `mode: "wide"` if you want a wider content column). Move the marketing nav into `docs.json`:
+When the homepage should reuse Mintlify's standard navbar and tab strip, **set `mode: "custom"` on `index.mdx`**. On the `luma` theme, `mode: "custom"` keeps the navbar and tab row rendering exactly as on every other page while natively hiding the sidebar, TOC, auto page header (title + description + "Copy page"), and footer-nav via Mintlify's built-in `peer-[.is-custom]:!hidden` rules. Shared chrome comes for free; almost no custom CSS is needed.
+
+Two traps here have each cost a full review cycle:
+
+1. **`mode: "wide"` does NOT hide the sidebar.** It only widens the content column. A landing page shipped on `mode: "wide"` (or with `mode` unset) renders the docs sidebar on `/` — the classic "the home page has a sidebar that should be removed" defect. Only `mode: "custom"` hides it.
+2. **Do not hide the sidebar with CSS instead of `mode: "custom"`.** The sidebar panel's DOM id has changed across Mintlify versions (`#sidebar` in older builds; `#sidebar-content` in current v4 builds), so CSS-only hiding silently breaks after a version bump — the rule still "applies", the sidebar still shows. `mode: "custom"`'s native hiding tracks Mintlify's DOM; rely on it and keep `custom.css` for genuine leftovers only.
+
+Move the marketing nav into `docs.json`:
 
 - "Product / Customers / Resources / Pricing" → `navbar.links`
 - "Get a demo" → `navbar.primary` (the right-most CTA button)
 - The doc-tab row ("Documentation / API / Solutions / ...") is already driven by `navigation.tabs`
 
-Then strip the bespoke `<div role="banner">` header and `<div role="contentinfo">` footer from `index.mdx` — the page now starts with the hero and ends with the closing CTA. The navbar and tab strip render at the top sitewide.
+Then strip any bespoke `<div role="banner">` header and `<div role="contentinfo">` footer from `index.mdx` — the page starts with the hero and ends with the closing CTA. The navbar and tab strip render at the top sitewide.
 
-The CSS you need is *different from Strategy A*, because the failure mode is different. The sidebar, TOC, page-header, and footer-nav each render in a wrapping element that reserves flex/grid space even when the inner child is `display:none`. Hiding the inner child alone leaves a large empty gutter (most often a ~304px right rail). The correct selectors target the **wrappers**:
+If some chrome element still shows on `/` after setting `mode: "custom"` (older Mintlify builds, or the floating "Ask AI" dock), inspect the **live rendered DOM first** — do not copy selectors from memory. Hide the *wrapper* element, not the inner child: the sidebar/TOC wrappers reserve flex space even when their children are `display:none`, leaving a ~304px empty gutter. Known wrapper ids as of mid-2026: `#sidebar-content` (sidebar panel — **not** `#sidebar`), `#content-side-layout` (TOC + chat-dock right rail), `#content-area > header#header` (auto page header), `#content-area > footer#footer` (prev/next nav). Scope every rule with `html[data-current-path="/"]` in root-level `custom.css`, and re-verify against the DOM whenever a rule doesn't visibly take effect.
 
-```css
-/* custom.css at the repo root — Strategy B */
-html[data-current-path="/"] #sidebar,
-html[data-current-path="/"] #content-side-layout,
-html[data-current-path="/"] #content-area > header#header,
-html[data-current-path="/"] #content-area > footer#footer,
-html[data-current-path="/"] #content-area > div.sticky.bottom-0 {
-  display: none !important;
-}
+**`mode: "custom"` removes every built-in page margin — bring your own containers.** The content area becomes truly full-bleed: no top offset below the tab strip, no horizontal gutters, no bottom margin. Uncontained sections render text touching the viewport edge — the "needs margins on home page" defect. Requirements:
 
-html[data-current-path="/"] #content-area {
-  padding: 0 !important;
-  margin: 0 !important;
-  max-width: none !important;
-}
-
-html[data-current-path="/"] #content-area > #content {
-  margin-top: 0 !important;
-}
-
-html[data-current-path="/"] :where(div):has(> #content-area) {
-  padding-top: 0 !important;
-}
-```
-
-Why each selector matters:
-
-- `#sidebar` — the left sidebar; hidden so the hero can go edge-to-edge.
-- `#content-side-layout` — the **wrapper** of the TOC and the AI chat dock. The flex parent is `flex flex-row-reverse gap-12`, so the right rail keeps its ~304px flex slot even when the TOC inside is hidden. You must hide the wrapper, not the child. **This is the single most common Strategy B bug** ("awkward white space on the right" / "hero squeezed").
-- `#content-area > header#header` — Mintlify auto-renders the page title + description + "Copy page" button above any MDX body. On a landing page with its own hero, this looks like a stray title block above your hero.
-- `#content-area > footer#footer` — the prev/next page nav at the bottom. Doesn't belong on a landing.
-- `#content-area > div.sticky.bottom-0` — the floating "Ask AI" chat dock.
-- `#content-area` padding/margin/max-width reset — without this, the content stays capped at the docs column width and the hero can't go full-bleed.
+- Every section, hero included, wraps its inner content in the same shared container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`. Full-bleed *backgrounds* go on the outer section element; the *content* stays inside the container.
+- The first section carries top padding so content clears the tab strip (`pt-8`–`pt-12`, or the hero's own `py-16`+).
+- The last section carries bottom padding (`pb-16`+) so the page doesn't end flush against the viewport.
+- Use one consistent max-width across all sections — mixed `max-w-5xl` / `max-w-7xl` sections read as misaligned columns.
 
 Pitfalls to verify after editing:
 
-1. **Confirm `custom.css` is being loaded.** If the rules above don't take effect, the most likely reason is the file isn't registered. Check `curl -s http://localhost:3000/ | grep -c 'data-current-path="/"\] #content-side-layout'` — it must be `> 0`. Restart `mint dev` after creating or moving the file.
-2. **Inspect the live DOM if a rule isn't winning.** Mintlify's class names and structure occasionally shift between versions. Open the deployed preview, find the actual wrapper element holding the TOC / page header, and update the selector. The selectors above are accurate as of mid-2026; if a `!important` rule isn't taking, the parent structure has likely moved.
-3. **Frontmatter `title` and `description` still render.** Even with `header#header` hidden via CSS, the frontmatter values still drive the browser tab `<title>` and `<meta description>`. Set them to whatever the source uses for the homepage's browser-tab title, even though they're not visible on-page.
+1. **Frontmatter `title` and `description` still render** in the browser tab `<title>` and `<meta description>` even though the auto page header is hidden. Set them to whatever the source uses for the homepage's browser-tab title.
+2. **If you did add rules to `custom.css`, confirm the file is being loaded**: `curl -s http://localhost:3000/ | grep -c 'data-current-path'` must be `> 0`. Restart `mint dev` after creating or moving the file.
 
-After applying Strategy B, navigate between `/` and any other docs page and confirm the navbar + tab strip stay completely still — no visual shift, no layout reflow. That continuity *is* the point.
+After applying Strategy B, navigate between `/` and any other docs page and confirm the navbar + tab strip stay completely still — no visual shift, no layout reflow. That continuity *is* the point. Then scan the homepage at desktop and mobile widths for the margin requirements above.
 
 ### Gotcha 3: Style with Tailwind utilities, never with custom CSS classes in an inline `<style>` block
 
@@ -346,7 +325,9 @@ Use only `<div>`, `<section>`, `<a>`, `<img>`, `<svg>`, `<h*>`, `<p>`, `<ul>`/`<
 ### 1. Frontmatter
 
 - Set `mode: "custom"` and `title: "Welcome"`.
-- `mode: "custom"` hides the sidebar, table of contents, and footer — but keeps the top navbar and tabs. When a fully chromeless design is desired (custom header replacing the navbar), add the CSS from Gotcha 2 to `custom.css` at the repo root. Do not put it in an inline `<style>` block (Gotcha 3).
+- `mode: "custom"` hides the sidebar, table of contents, auto page header, and footer — but keeps the top navbar and tabs (that is Strategy B's shared chrome, for free). Never substitute `mode: "wide"` or an unset `mode` plus CSS hiding: `wide` does not hide the sidebar, and the sidebar's DOM id shifts across Mintlify versions (`#sidebar` → `#sidebar-content`), so CSS-only hiding silently breaks.
+- `mode: "custom"` also strips all built-in page margins — every section must supply its own `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` container (see Gotcha 2 → Strategy B).
+- When a fully chromeless design is desired (custom header replacing the navbar), add the CSS from Gotcha 2 → Strategy A to `custom.css` at the repo root. Do not put it in an inline `<style>` block (Gotcha 3).
 
 ### 2. Optional Custom Site Header
 
@@ -514,12 +495,14 @@ curl -s http://localhost:3000/ | grep -c 'your distinctive string here'
 
 Check one string per section — hero, quick start, cards, and CTA banner at minimum.
 
-**Chrome audit (when using the CSS from Gotcha 2):** open the rendered page and confirm:
-- no empty 48px strip at the top (tabs wrapper removed)
-- hero extends edge-to-edge (no 19rem gutter on the left)
-- no default Mintlify navbar or sidebar visible
+**Chrome audit:** open the rendered `/` and confirm:
+- no docs sidebar visible (Strategy B: `mode: "custom"` set — not `wide`, not CSS hiding; Strategy A: chrome CSS applied)
+- Strategy A only: no empty 48px strip at the top (tabs wrapper removed), hero extends edge-to-edge (no 19rem gutter on the left), no default Mintlify navbar visible
+- Strategy B only: the navbar + tab strip render identically on `/` and on any content page (navigate between them — zero shift)
 
-If chrome is still visible, your `custom.css` is not being picked up. Check that the file is at the repo root, that `mint dev` was restarted after creating it, and that the rules made it into the rendered HTML: `curl -s http://localhost:3000/ | grep -c 'data-current-path="/"\] #sidebar'` should be `> 0`.
+If chrome-hiding CSS you wrote isn't taking effect, check that `custom.css` is at the repo root, that `mint dev` was restarted after creating it, and that the rules made it into the rendered HTML: `curl -s http://localhost:3000/ | grep -c 'data-current-path'` should be `> 0`. If the rule is present but the element still shows, the DOM id has moved (e.g. `#sidebar` → `#sidebar-content`) — inspect the live DOM and update the selector.
+
+**Margin audit (`mode: "custom"` pages):** at desktop and mobile widths, confirm no text or card touches the viewport edge, the first section clears the tab strip, the page ends with bottom padding, and every section shares the same max-width column. See Gotcha 2 → Strategy B for the container spec.
 
 **Styling audit (Gotcha 3):** confirm Tailwind compiled successfully and no custom CSS rules were stripped:
 
