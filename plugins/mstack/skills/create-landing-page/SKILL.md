@@ -1,6 +1,6 @@
 ---
 name: create-landing-page
-description: Build custom Mintlify docs landing pages (index.mdx) with hero sections, navigation cards, quick-start steps, and responsive dark-mode support. Use when creating or redesigning a documentation landing page, index.mdx, or custom Mintlify homepage.
+description: Build custom Mintlify docs landing pages (index.mdx) with source-backed company assets, hero sections, navigation cards, quick-start steps, and responsive dark-mode support. Use when creating or redesigning a documentation landing page, index.mdx, custom Mintlify homepage, or branded docs home.
 ---
 
 # Create Landing Page
@@ -11,11 +11,11 @@ Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`
 
 1. Read the project's `docs.json` to understand navigation structure, brand colors, and existing page paths.
 2. Read the parity manifest when present so landing-page cards and CTAs point to source-backed page paths.
-3. Identify the brand's primary color, logo files (light/dark), and any hero imagery.
+3. Inventory the company's available assets before choosing the visual direction. When a source site, brand repository, or supplied asset folder exists, read [references/company-assets.md](references/company-assets.md) and map each useful asset to a landing-page role.
 4. If the user provided an original docs/homepage URL, inspect its rendered page plus raw HTML/CSS for visible colors, logo, favicon, hero/background media, top-level layout, section order, card counts, CTA labels, and footer/header structure before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
 5. Confirm which docs pages already exist so all card/button `href` values point to real paths.
 6. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
-7. Check `docs.json` navigation to ensure `index` is registered (see "docs.json Registration" below).
+7. Decide whether `index` belongs in navigation based on the source chrome and discoverability requirements (see "docs.json Registration" below). Never add it to an existing sidebar group by default.
 
 ## Replica-first landing rule
 
@@ -26,6 +26,16 @@ When the task is migrating or replicating a company's docs site, mirror the sour
 - Match card/grid counts, repeated CTA patterns, hero media, navbar/footer links, and first-fold hierarchy.
 - Use Mintlify-native components or Tailwind utilities to implement the structure, but do not swap in a generic docs-template layout just because it looks cleaner.
 - If a source element cannot be reproduced safely in Mintlify, approximate it visibly and record the delta for `/preview-qa` and `/han-review`.
+
+## Company assets are the default visual material
+
+When company assets are available, build the page around them instead of reaching first for generic gradients, stock illustrations, or unrelated iconography. Read [references/company-assets.md](references/company-assets.md) for the inventory, selection, localization, and verification workflow.
+
+- Prefer the company's actual wordmark, product UI, diagrams, illustrations, textures, and approved photography in the same roles they serve on the source site.
+- Preserve original SVGs and the highest-resolution raster source. Do not recreate a logo from a screenshot, upscale a small image, or substitute a generic icon when an approved asset exists.
+- Copy approved assets into the docs repo and use root-relative paths. Do not leave critical landing-page visuals hotlinked to the source website or a temporary CDN URL.
+- Match light/dark variants and intended crops. A correct file used against the wrong background or cropped around the wrong focal point is still a parity defect.
+- If the source has no suitable visual for a section, use restrained Mintlify-native layout and typography; do not invent a new brand language.
 
 ## Critical Mintlify Gotchas (read this before writing any JSX)
 
@@ -151,7 +161,7 @@ MDX/JSX processing can silently drop individual children from an inline `<svg>` 
 Additional rules for inline SVG icons:
 
 - Use **inline `style={{flexShrink: 0}}`** instead of the `flex-shrink-0` class on icons inside flex containers — flex parents can otherwise squeeze the icon to zero width even when `width`/`height` attributes are set.
-- Source single-path icons from [Heroicons](https://heroicons.com), [Lucide](https://lucide.dev), or [Phosphor](https://phosphoricons.com) — all of them ship single-path SVGs by default. Copy the `d` attribute, set `stroke="currentColor"`, and apply a `text-*` Tailwind class to color it.
+- Use an icon whose exported SVG has been inspected and reduced to one `<path>`. Heroicons, Lucide, and Phosphor often use multiple SVG elements, so the library name alone does not make an icon safe for this constraint.
 - Prefer Font Awesome icons via the Mintlify `<Card icon="..."/>` prop or `<Icon icon="..."/>` component when an icon sits inside a Mintlify component — they are server-rendered and never affected by this issue.
 - After adding an inline SVG, verify it renders fully in the browser. A partial icon (e.g., only the path, missing the circle) is the signature symptom of this gotcha.
 
@@ -178,7 +188,9 @@ If a visible piece of text does not appear in the rendered HTML, an element is p
 
 ## docs.json Registration
 
-`index.mdx` must be listed in `docs.json` navigation. The value `"index"` maps to `index.mdx` at the repo root (no extension).
+`index.mdx` is served at `/` even when it is omitted from `docs.json` navigation. Include it only when the source has a visible Home tab/entry or when the page must participate in Mintlify navigation indexing. Omitted pages are hidden from navigation and, by default, excluded from search and assistant indexing.
+
+When `index` is included, give it a dedicated top-level page or Home tab. Do not insert it into an existing Getting Started/sidebar group unless the source visibly has that entry; doing so commonly creates a duplicate `Home`/`Overview` row.
 
 **Single-product (tabs at root):**
 ```json
@@ -209,11 +221,11 @@ If a visible piece of text does not appear in the rendered HTML, an element is p
 }
 ```
 
-Also confirm `docs.json` has `$schema`, `name`, `colors.primary`, `logo` (light/dark SVGs + `href`), and `favicon`.
+Confirm `docs.json` has the required `theme`, `name`, `colors.primary`, and `navigation` fields. When company assets exist, configure source-verified `logo` and `favicon` paths; add `$schema` for editor validation when it is absent.
 
-## Section Order
+## Greenfield Section Order
 
-From high-quality Mintlify docs sites (e.g. Miro Developer Platform):
+Use this only when there is no source landing page to replicate. For migrations, preserve the source section order and omit sections the source does not have.
 
 1. **Hero** — value prop headline, subheading, primary + secondary CTA buttons, optional hero image
 2. **Quick Start** — `<Steps>` with 3–4 steps to first success; at least one code block; collapsible response in `<Accordion>`
@@ -227,7 +239,7 @@ From high-quality Mintlify docs sites (e.g. Miro Developer Platform):
 ```mdx
 ---
 mode: "custom"
-title: "Welcome"
+title: "<source page title or company docs name>"
 ---
 
 {/* 1. Optional custom <div role="banner"> site header (Tailwind classes inline) */}
@@ -245,7 +257,7 @@ Use only `<div>`, `<section>`, `<a>`, `<img>`, `<svg>`, `<h*>`, `<p>`, `<ul>`/`<
 
 ### 1. Frontmatter
 
-- Set `mode: "custom"` and `title: "Welcome"`.
+- Set `mode: "custom"` and use the source page title or company docs name for `title`; do not hard-code `"Welcome"` when it is not the source title.
 - `mode: "custom"` hides the sidebar, table of contents, and footer — but keeps the top navbar and tabs. When a fully chromeless design is desired (custom header replacing the navbar), add the CSS from Gotcha 2 to `custom.css` at the repo root. Do not put it in an inline `<style>` block (Gotcha 3).
 
 ### 2. Optional Custom Site Header
@@ -256,7 +268,7 @@ Only build one when the brand's marketing site has a distinctive navbar you are 
 - Use a two-row layout when replicating a typical SaaS header: marketing nav row + product/docs tabs row, separated by a `border-t` in the theme's border color.
 - Inside each row, a `mx-auto max-w-7xl flex items-center justify-between px-4 sm:px-6 lg:px-8` container keeps content aligned with the rest of the page.
 - Links are plain `<a>` elements with `className` — do not wrap groups in `<nav>`.
-- Use the same logo file(s) declared in `docs.json` (`/images/...`). Include light/dark variants with `block dark:hidden` + `hidden dark:block`.
+- Use the source-verified logo files selected during the asset inventory, then update `docs.json` if its logo paths are stale. Include light/dark variants with `block dark:hidden` + `hidden dark:block` when both exist.
 - Primary CTA = filled pill in the brand color; secondary CTA = outline pill. Match the rest of the page's button styling.
 - Allow the tabs row to scroll horizontally on small screens: `overflow-x-auto` + `whitespace-nowrap` on each tab.
 - Every tab `href` must resolve to a real docs page — grep the repo for `<section-slug>/overview.mdx` or similar entry points before wiring them up.
@@ -267,13 +279,13 @@ Only build one when the brand's marketing site has a distinctive navbar you are 
 - Use `relative overflow-hidden` on the hero `<section>` for full-bleed backgrounds. Do **not** use the viewport-width breakout hack (`left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen` or `-mx-[50vw] w-screen`) — it causes horizontal overflow and scroll issues.
 - Inner content should still use a max-width container (`max-w-5xl`–`max-w-7xl`), centered (`mx-auto`), with horizontal padding for readability.
 - Two-column grid on desktop, single-column on mobile.
-- Visually distinct background (source media, brand color, gradient, or image/video with overlay).
+- Use source media when it carries the brand or explains the product; otherwise use the source brand color treatment or a restrained adaptive gradient. Do not cover a legible product screenshot with decorative effects merely to fill the hero.
 - **Adapt the hero background to both modes** (see "Adaptive hero & CTA backgrounds" below). A permanently dark hero looks great in dark mode but clashes with a light navbar in light mode, and vice versa.
 - `<h1>` heading with responsive sizing (`text-4xl` → `text-6xl`), `font-semibold`/`font-bold`, high-contrast color.
 - `<p>` subtitle below the heading, `text-base`–`text-xl`, max-width constrained.
 - Primary CTA button (brand background, links to quickstart) + secondary CTA button (outline style).
 - Buttons: `rounded-lg`/`rounded-full`, hover transitions, `flex-wrap` + `gap-3`/`gap-4`, actionable text.
-- If hero image: `alt` attribute, `noZoom`, responsive sizing, light/dark variants if needed.
+- For hero media, use the asset inventory's chosen file, intended crop, and light/dark variant. Add meaningful `alt` text for informative media and `alt=""` for purely decorative media; use `noZoom` and responsive sizing.
 
 #### Adaptive hero & CTA backgrounds (required for any tinted/dark section)
 
@@ -356,7 +368,7 @@ Verification: screenshot the page in both modes and confirm:
 **Custom image cards (when richer previews are needed):**
 - `<a>` tag with `group`, `block`, `rounded-2xl`, `border`, `overflow-hidden`, `no-underline`.
 - Hover border color change to brand color.
-- Fixed-height image container, `alt` + `noZoom`.
+- Use source product thumbnails, diagrams, or illustrations assigned in the asset inventory. Keep a consistent aspect ratio without forcing unrelated crops; add `alt` + `noZoom`.
 - Body: `<h3>` title, `<p>` description, arrow indicator with `group-hover` brand color.
 - Grid: `grid-cols-1 md:grid-cols-2` (or `md:grid-cols-3`), `gap-4`–`gap-6`.
 
@@ -410,7 +422,7 @@ Check one string per section — hero, quick start, cards, and CTA banner at min
 - hero extends edge-to-edge (no 19rem gutter on the left)
 - no default Mintlify navbar or sidebar visible
 
-If chrome is still visible, your `custom.css` is not being picked up. Check that the file is at the repo root, that `mint dev` was restarted after creating it, and that the rules made it into the rendered HTML: `curl -s http://localhost:3000/ | grep -c 'data-current-path="/"\] #sidebar'` should be `> 0`.
+If chrome is still visible, your `custom.css` is not being picked up. Check that the file is at the repo root, that `mint dev` was restarted after creating it, and that the rules made it into the rendered HTML: `curl -s http://localhost:3000/ | grep -c 'data-current-path="/"\] #navbar'` should be `> 0`.
 
 **Styling audit (Gotcha 3):** confirm Tailwind compiled successfully and no custom CSS rules were stripped:
 
@@ -428,20 +440,20 @@ If the page renders as unstyled text in the browser but content is present in th
 
 ```bash
 # Count inline SVGs whose body uses circle/rect/line — these are at risk of partial rendering
-rg -n -U '<svg[^>]*>(?:[^<]|<(?!/svg>))*<(?:circle|rect|line)\b' index.mdx | wc -l
+rg -n '<(circle|rect|line)\b' index.mdx | wc -l
 # expect: 0
 ```
 
-If any are flagged, replace them with a single-path equivalent from Heroicons / Lucide / Phosphor, or swap to a Mintlify `<Icon icon="..."/>` / Font Awesome name on a `<Card>`.
+If any are flagged, replace the icon with an inspected single-path export or use a Mintlify `<Icon icon="..."/>` / configured-library icon on a `<Card>`.
 
-**Dark mode:** Every `text-*`, `bg-*`, and `border-*` class needs a `dark:` variant. Pay special attention to the hero and closing CTA — see "Adaptive hero & CTA backgrounds" under Hero Section. Open the page in both light and dark mode (toggle the theme switcher, or screenshot with `--force-dark-mode` headless Chrome) and confirm the hero/CTA blend with the surrounding chrome in *both* modes. The filled brand-color primary CTA can stay one color across modes; the inline code preview pane should stay dark in both modes.
+**Dark mode:** Add a `dark:` variant wherever the base text, background, or border color loses contrast or breaks source parity in dark mode. Stable brand buttons and intentionally dark code panes do not need artificial variants. Pay special attention to the hero and closing CTA, then screenshot both modes.
 
 **Responsive:** Multi-column → single-column on mobile. Text sizes scale down. Buttons stack vertically on small screens. Decorative elements hidden on mobile if needed.
 
 **Section rhythm:** Each section has horizontal margins, styled `<h2>` titles, and subtitle text for scannability.
 
-**Branding:** One primary brand color used consistently for CTAs, hover states, accents. Max 2 accent colors total.
+**Assets and branding:** Every prominent visual maps to a source, supplied, or company-repository asset; all critical files are local, light/dark variants are correct, crops preserve the focal point, and remote URLs remain only when the company intentionally hosts the asset as a durable embed. Use the source color system rather than imposing an arbitrary accent-count limit.
 
-**Accessibility:** Meaningful `alt` text on all images. `role="banner"` / `role="navigation"` / `role="contentinfo"` on any `<div>`s that substitute for stripped semantic tags. Links have visual affordances beyond color. Sufficient contrast in both modes. No placeholder copy or commented-out JSX.
+**Accessibility:** Meaningful `alt` text on informative images and empty `alt` text on decorative images. `role="banner"` / `role="navigation"` / `role="contentinfo"` on any `<div>`s that substitute for stripped semantic tags. Links have visual affordances beyond color. Sufficient contrast in both modes. No placeholder copy or commented-out JSX. Run `mint a11y` and fix relevant failures.
 
 **Links:** Run `mint broken-links` or manually verify every `href` resolves to an existing page. Header tabs and footer columns are easy to miss — verify each one individually.

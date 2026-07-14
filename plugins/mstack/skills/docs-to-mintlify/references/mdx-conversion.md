@@ -11,7 +11,7 @@ Hand-editing is appropriate only for small sites or for a handful of files the s
 For every page in the discovered inventory:
 
 - Start from raw `.md` output if available; otherwise scrape rendered content.
-- Add frontmatter: `title`, `description`, and optionally `sidebarTitle` or `icon`.
+- Add source-backed frontmatter: `title`, plus `description` only when the source renders matching lead text; add `sidebarTitle` or `icon` only when the source navigation supplies them.
 - Replace content patterns with Mintlify components where semantically equivalent:
   - Note boxes / warnings / tips -> `<Note>`, `<Warning>`, `<Tip>`, `<Info>`
   - Step-by-step instructions -> `<Steps>` with `<Step>` children
