@@ -365,12 +365,12 @@ Before reaching for any of the three, confirm with the user that the requirement
 
 ### Site root `index.mdx` and the sidebar
 
-`index.mdx` is the site homepage — Mintlify serves it at `/` and the navbar logo links there by default. It is **already reachable without any sidebar entry**. The recurring trap is treating it like a normal docs page and adding `"index"` (or whatever the homepage slug is) to a sidebar group's `pages` array. That produces a duplicate sidebar entry whose label depends on the homepage's frontmatter:
+`index.mdx` is the site homepage — Mintlify serves it at `/` and the navbar logo links there by default. It is reachable without a sidebar entry. The recurring trap is adding `"index"` (or the homepage slug) to an existing sidebar group's `pages` array without checking the source. That can produce a duplicate sidebar entry whose label depends on the homepage's frontmatter:
 
 - If `index.mdx` has `sidebarTitle: "Home"` and the next page in the same group is `getting-started.mdx` (whose `title` is "Overview"), the sidebar shows `Home` *and* `Overview` stacked at the top of Getting Started — neither matches the source, which usually shows just one entry.
 - If `index.mdx` has no `sidebarTitle` and its `title` happens to match the next page's title, the sidebar shows two identically-labelled entries that both link to different URLs. Reviewers read this as a bug.
 
-The fix is one line in `docs.json`: drop `"index"` from any sidebar `pages` array. The homepage stays at `/` (logo click + direct URL still work), and the sidebar's first entry under each group becomes whatever the source actually shows.
+When the source has no Home row in that group, drop `"index"` from its `pages` array. The homepage stays at `/` (logo click + direct URL still work), and the sidebar's first entry becomes whatever the source shows. If the source has a top-level Home tab or the page needs navigation-backed search/assistant indexing, register it as a dedicated top-level page/tab instead of burying it in a docs group.
 
 ```json
 // Before — duplicate "Home" / "Overview" at the top of Getting Started
@@ -395,7 +395,7 @@ The fix is one line in `docs.json`: drop `"index"` from any sidebar `pages` arra
 
 Notes:
 
-- This is the one **intentional exception** to the `/preview-qa` Gate 1 "no orphan MDX" rule. `index.mdx` (and any other root-level homepage variant — `home.mdx`, `welcome.mdx` — that the site uses as the `/` destination) is allowed to live outside `docs.json` navigation by design.
+- A deliberately hidden `index.mdx` is an intentional exception to the `/preview-qa` Gate 1 "no orphan MDX" rule, but hidden pages are excluded from Mintlify search and assistant indexing by default. Register the homepage at the top level when discoverability is required.
 - If the source site *does* show a "Home" entry in the sidebar (some ReadMe.io and GitBook themes do this), keep `index` in the group but verify the label matches the source — usually `sidebarTitle: "Home"` on `index.mdx` plus dropping any other "Overview" / "Welcome" page that would duplicate it.
 - The same trap applies to landing-page slugs introduced by `/create-landing-page` (e.g. `developers/index.mdx` for a dropdown root). If the dropdown's logo or first tab already lands the user on that page, do not also list it as a sidebar entry inside the dropdown's groups.
 
