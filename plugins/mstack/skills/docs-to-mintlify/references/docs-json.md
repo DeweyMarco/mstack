@@ -7,6 +7,7 @@
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - File paths in `pages` arrays must not include `.mdx`.
 - Preserve **customer-authored** `colors`, `logo`, `favicon`, `fonts`, `navbar`, `footer`, and `seo` unless updating them is explicitly requested. **Exception:** if these fields contain Mintlify starter defaults (anything inherited from `mint init` or a docs template), they are placeholders to audit, not existing config to keep. The Blog global anchor, Twitter/GitHub footer socials, and "Get started" CTA from the default starter are the usual offenders.
+- **Always set `theme` to `"luma"`. Never use `maple`.** `luma` is the mstack standard for every preview — its single full-width sticky navbar handles full-bleed heroes, product selectors (`navigation.products`), and homepage↔content chrome continuity natively, while `maple`'s split navbar repeatedly costs hours of fragile CSS workarounds (see `create-landing-page` → Gotcha 2 → "Theme policy"). `mint init` scaffolds `maple` by default — always overwrite it with `"luma"`. `maple` is never an acceptable choice, including on customer request. If a customer explicitly and specifically insists on a non-luma look, the only fallbacks are the other supported themes (`mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, `sequoia`), and you should flag the tradeoff first — but default to `luma` and never reach for `maple`.
 - Add root-level `api` config whenever the site has OpenAPI specs.
 - Validate with `python3 -c "import json; json.load(open('docs.json'))"` after every structural edit.
 
@@ -19,7 +20,7 @@ For migrations whose goal is to match an existing site, every top-level chrome e
 - `navbar.links` — only the right-side utility text links the source actually anchors to the right of the navbar (e.g. sign-in, contact). Items the source shows in its inline horizontal row do not belong here even when they are external.
 - `navbar.primary` — the single right-side CTA button. Absent if the source has no CTA.
 - `footer.socials` and `footer.links` — only what appears on the source footer. Default Twitter/GitHub socials from the starter are the most common parity miss.
-- `seo.metatags` — mirror the source's meta description and OG tags, not Mintlify's defaults.
+- `seo.metatags` — mirror the source's meta description and OG tags, not Mintlify's defaults. **Always merge in `"robots": "noindex"`** (see *Search-engine indexing* below) — mirroring the source's other metatags does not exempt the preview from this.
 - **Default mode is remove, not add.** When unsure whether the source has a feature, delete it from `docs.json` and re-add only after confirming on the live site. Extras survive every other QA pass because they look "normal" — the only way to catch them is to audit each chrome field against a fresh `curl` of the source.
 
 #### One visible horizontal row = one config surface
@@ -35,6 +36,27 @@ Rule for navbar generation:
 
 This is `/preview-qa` Gate 3's "Top horizontal-bar single-row parity" check — generating the right shape upfront avoids the post-hoc cleanup.
 
+#### Per-tab sidebar parity for multi-tab sites
+
+Mintlify's per-tab nav model means **every top-level tab has its own independent sidebar** (`tabs[i].groups[]`). For sites with 5+ top-level tabs (developer portals, product hubs, enterprise docs platforms), the conversion is not "one nav" but "N navs" — and each tab's sidebar must mirror the **source's sidebar for that same tab**, not be inferred from the file tree.
+
+The recurring failure mode: a transformer flattens the file system into one top-level tab and dumps every other tab's pages into a generic `Reference` or `Misc` group. JSON validates, every page is reachable, every link works — but the sidebar on `/connect-data/*` shows BI tools next to changelog entries next to admin SDK references, none of which the source has in that sidebar.
+
+Mirror per-tab. For each tab the source has:
+
+1. **Fetch the source tab's rendered sidebar** — not via WebFetch's summarization but via Chrome MCP / `mcp__claude-in-chrome__*` so you can read the actual DOM hierarchy of the sidebar tree. WebFetch collapses nested groups into flat link lists and silently loses the group/subgroup structure.
+2. **Capture the visible group order, subgroup order, and per-page sidebar label.** Top-level groups become `groups`, nested groups become `groups[].pages[]` with a nested `{ "group": ..., "pages": [...] }` shape. Subgroup labels visible in the source must appear verbatim in `docs.json`.
+3. **Map every page in the source's tab sidebar to a converted MDX file** using the parity manifest's `normalized_path`. Pages that exist in the file tree but are not in the source tab's sidebar belong to a different tab — do not include them.
+4. **Emit one tab's groups at a time.** When restructuring an existing site, do not edit multiple tabs' `groups` in the same pass — agents working in parallel collide on the same `docs.json`, and the merge is hard to reason about. The session that produced this skill ran five tab-restructure agents serially (or with explicit non-overlapping ownership) for exactly this reason.
+5. **Validate per tab.** After each tab is emitted, `mint validate` must pass and the count of pages in that tab must equal the count of source pages in the same tab's sidebar (modulo intentional `excluded` entries in the parity manifest).
+
+Anti-pattern to avoid: emoji / Font Awesome icons on top-level tabs in `navigation.tabs[].icon` when the source does not use them. Mintlify renders these as visible chips next to the tab label. Strip every `icon:` from `tabs[]` unless you can point at the matching glyph on the source — the session shipped `rocket`, `plug`, `magnifying-glass-chart`, `shield-halved`, `sliders`, `code`, `circle-question` on tabs that the source displayed as plain text labels, and they all had to be ripped out later.
+
+Verification:
+
+- Open the live source in Chrome (`mcp__claude-in-chrome__navigate`), click each tab, screenshot the sidebar, and compare side-by-side against `mint dev` on the same tab path.
+- Repeat for every tab. Per-tab parity is `/preview-qa` Gate 3's "Per-page sidebar parity (no stacked sidebars)" check — emitting the right per-tab structure upfront is far cheaper than restructuring later.
+
 For OpenAPI-backed sections, reference the spec directly on the group. Do not list auto-generated endpoint pages manually:
 
 ```json
@@ -44,6 +66,23 @@ For OpenAPI-backed sections, reference the spec directly on the group. Do not li
 ```json
 { "group": "Core API", "openapi": { "source": "openapi/core.json", "directory": "api-reference" } }
 ```
+
+## Search-engine indexing
+
+Every generated `docs.json` must keep the preview out of search-engine indexes. Set `seo.metatags.robots` to `noindex`:
+
+```json
+"seo": {
+  "metatags": {
+    "robots": "noindex"
+  }
+}
+```
+
+- This is **mandatory and non-negotiable** — these are preview deployments, not the customer's production site, and must never be indexed.
+- Add it even when preserving or mirroring other `seo` fields (meta description, OG tags). Merge `"robots": "noindex"` into the existing `seo.metatags` block rather than dropping the mirrored tags.
+- If the source site or an existing `docs.json` already sets `robots` to something else, override it to `noindex`.
+- This overrides the "preserve customer-authored `seo`" rule above for the `robots` key specifically.
 
 ## Contextual Menu
 

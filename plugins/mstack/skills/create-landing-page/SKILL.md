@@ -14,7 +14,7 @@ Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`
 3. Inventory the company's available assets before choosing the visual direction. When a source site, brand repository, or supplied asset folder exists, read [references/company-assets.md](references/company-assets.md) and map each useful asset to a landing-page role.
 4. If the user provided an original docs/homepage URL, inspect its rendered page plus raw HTML/CSS for visible colors, logo, favicon, hero/background media, top-level layout, section order, card counts, CTA labels, and footer/header structure before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
 5. Confirm which docs pages already exist so all card/button `href` values point to real paths.
-6. Verify the `mint` CLI runs and the `data-docs-theme` in use (`maple`, `mint`, `palm`, `willow`, `aspen`, `luma`, `linden`, `almond`, `sequoia`).
+6. Verify the `mint` CLI runs and the `data-docs-theme` in use. **mstack always uses `luma` and never `maple`** — set `"theme": "luma"` for greenfield `docs.json`, and convert any inherited or `mint init`-scaffolded `maple` site to `luma` before building the landing page (see Gotcha 2 → "Theme policy"). The other supported themes (`mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, `sequoia`) are only for an explicit, specific customer request; `maple` is never an option.
 7. Decide whether `index` belongs in navigation based on the source chrome and discoverability requirements (see "docs.json Registration" below). Never add it to an existing sidebar group by default.
 
 ## Replica-first landing rule
@@ -36,6 +36,31 @@ When company assets are available, build the page around them instead of reachin
 - Copy approved assets into the docs repo and use root-relative paths. Do not leave critical landing-page visuals hotlinked to the source website or a temporary CDN URL.
 - Match light/dark variants and intended crops. A correct file used against the wrong background or cropped around the wrong focal point is still a parity defect.
 - If the source has no suitable visual for a section, use restrained Mintlify-native layout and typography; do not invent a new brand language.
+
+### Pull source assets, do not fabricate them
+
+The single most common landing-page regression is reaching for "tasteful" gradients, glows, or purple backgrounds when the source has none. The fix is always cheaper at authoring time than after a reviewer flags it: open the source page, identify what's actually rendered, and ship that.
+
+Concretely:
+
+1. **Fetch the hero background image from the source CDN.** Most marketing-style docs landings ship a single hero asset (`banner_bg.png`, `hero.svg`, etc.) referenced from the source HTML. Download it to `/images/hero-banner.png` (or similar) and use it as the hero background, instead of recreating it with Tailwind gradients. Eyeballed gradients never match.
+2. **Pixel-sample the source's section backgrounds.** If the source uses a single white background under everything except the hero, do not add gray section bands, purple gradient callouts, or tinted card backgrounds. Sample the source body bg at four points; if uniform, every non-hero section gets the same flat background.
+3. **Match featured-card backgrounds to the source's actual tile colors.** Source sites usually use soft pastel fills (lavender `#f4f3fd`, light lavender, cream) on featured cards — *not* the brand color at full saturation. Sample one card per row.
+4. **Replicate FAQ / accordion content verbatim.** When the source landing has an FAQ section, port every question + answer into a Mintlify `<AccordionGroup>` with internal links rewritten to the new Mintlify routes. Don't summarize, reorder, or pick a subset.
+5. **Mirror "Recently updated / Recently added / Most popular" rails when present.** These are part of the source's landing IA; dropping them feels like missing content. If the data isn't accessible programmatically, hard-code the items the source currently shows and add a note in the parity manifest about how to refresh them.
+
+When in doubt, screenshot the source landing and the preview side-by-side at the same viewport. Anything that looks "extra" (a gradient the source doesn't have, a callout color shifted toward the brand) is a defect, not polish.
+
+### Adapt logos for light + dark
+
+Customer logos almost always need both variants, and the source usually only ships one:
+
+- Download the primary logo asset from the source CDN.
+- Resize to a navbar-friendly height (~48px tall; preserve aspect ratio).
+- Ship `/logo/<customer>-light.<ext>` as the source asset directly.
+- Prefer an approved dark-mode variant from the company or source. If none exists, derive one only for a simple monochrome wordmark, preserve alpha, and verify it visually; never invert a multicolor mark or icon automatically.
+- The icon mark (separate from the wordmark) usually doesn't need inverting — verify against the source dark-mode rendering if the source supports a theme toggle.
+- Save the 48×48 icon mark separately as `/favicon.png`.
 
 ## Critical Mintlify Gotchas (read this before writing any JSX)
 
@@ -65,7 +90,28 @@ Also safe: `<section>`, `<div>`, `<span>`, `<a>`, `<img>`, `<svg>`, `<h1>`–`<h
 
 `mode: "custom"` hides the sidebar, table of contents, and footer — but it keeps the top navbar and the product tabs bar. For a fully chromeless landing page with its own header, you need CSS to also hide the navbar and tabs and to reset the content offsets that the layout system still applies.
 
-**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `maple` theme; other themes (`luma`, `aspen`, etc.) share most of them but verify against the rendered DOM if anything is off:
+#### Choose a chrome strategy first
+
+There are two viable landing-page architectures, and they call for different CSS. Decide before writing any code:
+
+**A. Chromeless landing with a bespoke header (the rest of this gotcha).** Use when the source's marketing site has a distinctive navbar (custom logo composition, marketing nav, demo CTA) that you want to replicate on the homepage *only*. Drawback: the chrome shift between `/` and every other docs page is visible and jarring unless the bespoke header is pixel-identical to Mintlify's tab strip.
+
+**B. Shared chrome via `mode: "custom"`.** Recommended when the surrounding docs use Mintlify's standard navbar + tab strip (Stripe, HubSpot, Vercel, and most modern dev-docs sites do this). Set `mode: "custom"` on `index.mdx` — on the `luma` theme this keeps the same navbar + tabs as every other page while natively hiding the sidebar, TOC, auto page header, and footer-nav on `/`. Result: zero visible seam between the landing and the rest of the docs. (`mode: "wide"` does **not** hide the sidebar — see Strategy B below.)
+
+If you reach for Strategy A out of habit and the source actually uses Strategy B, every reviewer will flag the jarring transition between `/` and `/<any-other-page>`. When in doubt, pick B.
+
+#### Theme policy: always `luma`, never `maple`
+
+**mstack standardizes on the `luma` theme for every preview, and never uses `maple`.** The reason is structural — it comes down to the navbar architecture:
+
+- **`luma` renders one full-width, sticky `header#navbar`** holding the logo, tabs, and actions together. It spans the page and stays put on scroll natively, and a full-bleed hero sits flush beneath it with **zero** custom nav/sidebar CSS — just the Strategy B chrome trims below.
+- **`maple` splits the nav**: the logo lives in a fixed left `#sidebar` (transparent background) while the tabs live in a *separate* fixed `#navbar-transition-maple` strip that only starts at x≈304px — both transparent with a backdrop-blur. A full-bleed hero then bleeds *up through* the transparent nav, the bar isn't full-width, the logo zone sits behind the hero on scroll, and the logo is hidden entirely on a `mode: "custom"` page (maple keeps it in the sidebar that custom mode collapses). Reassembling one solid, full-width, fixed bar — z-lifting `#sidebar` above the hero, painting matching white backings on both halves, killing the backdrop-blur, pushing the hero down with `padding-top` — takes ~100+ lines of fragile, version-sensitive CSS.
+
+So: set `"theme": "luma"` on every site. If you inherit a `maple` site (or `mint init` scaffolds one), **convert it** — switch `"theme": "maple"` → `"luma"` in `docs.json` before doing any landing-page work. It provides the full-width sticky bar for free and collapses `custom.css` back to the Strategy B trims. Theme is site-wide, so re-check a normal content page after switching. **Never write CSS to fake `maple`'s navbar; switch the theme instead.** (The Strategy B selectors below are tested against `luma`.)
+
+#### Strategy A — Chromeless landing (the original Gotcha 2)
+
+**Put this CSS in a root-level `custom.css` file, NOT in an inline `<style>` block.** Mintlify auto-loads `custom.css` and reliably injects it as `<style data-custom-css-index="0">`. Inline `<style>{`...`}</style>` blocks in `index.mdx` are silently stripped once they grow beyond a small handful of rules (see Gotcha 3) — so even the chrome-hiding CSS can vanish without warning when other rules pile up. These selectors are tested against the `luma` theme, which mstack uses for every preview (see Gotcha 2 → "Theme policy" — `maple` is never used):
 
 ```css
 /* custom.css at the repo root */
@@ -104,6 +150,39 @@ Why each rule matters:
 - `#content-area` and `#content` — apply a max-width that centers the content and leaves white space on either side. Override to 100% for true full-bleed.
 
 **Do not use `div:has(> #navbar)`** — the desktop `#navbar`'s parent contains the whole page layout, so you would hide the entire site.
+
+#### Strategy B — Shared chrome (Stripe / HubSpot / Vercel pattern)
+
+When the homepage should reuse Mintlify's standard navbar and tab strip, **set `mode: "custom"` on `index.mdx`**. On the `luma` theme, `mode: "custom"` keeps the navbar and tab row rendering exactly as on every other page while natively hiding the sidebar, TOC, auto page header (title + description + "Copy page"), and footer-nav via Mintlify's built-in `peer-[.is-custom]:!hidden` rules. Shared chrome comes for free; almost no custom CSS is needed.
+
+Two traps here have each cost a full review cycle:
+
+1. **`mode: "wide"` does NOT hide the sidebar.** It only widens the content column. A landing page shipped on `mode: "wide"` (or with `mode` unset) renders the docs sidebar on `/` — the classic "the home page has a sidebar that should be removed" defect. Only `mode: "custom"` hides it.
+2. **Do not hide the sidebar with CSS instead of `mode: "custom"`.** The sidebar panel's DOM id has changed across Mintlify versions (`#sidebar` in older builds; `#sidebar-content` in current v4 builds), so CSS-only hiding silently breaks after a version bump — the rule still "applies", the sidebar still shows. `mode: "custom"`'s native hiding tracks Mintlify's DOM; rely on it and keep `custom.css` for genuine leftovers only.
+
+Move the marketing nav into `docs.json`:
+
+- "Product / Customers / Resources / Pricing" → `navbar.links`
+- "Get a demo" → `navbar.primary` (the right-most CTA button)
+- The doc-tab row ("Documentation / API / Solutions / ...") is already driven by `navigation.tabs`
+
+Then strip any bespoke `<div role="banner">` header and `<div role="contentinfo">` footer from `index.mdx` — the page starts with the hero and ends with the closing CTA. The navbar and tab strip render at the top sitewide.
+
+If some chrome element still shows on `/` after setting `mode: "custom"` (older Mintlify builds, or the floating "Ask AI" dock), inspect the **live rendered DOM first** — do not copy selectors from memory. Hide the *wrapper* element, not the inner child: the sidebar/TOC wrappers reserve flex space even when their children are `display:none`, leaving a ~304px empty gutter. Known wrapper ids as of mid-2026: `#sidebar-content` (sidebar panel — **not** `#sidebar`), `#content-side-layout` (TOC + chat-dock right rail), `#content-area > header#header` (auto page header), `#content-area > footer#footer` (prev/next nav). Scope every rule with `html[data-current-path="/"]` in root-level `custom.css`, and re-verify against the DOM whenever a rule doesn't visibly take effect.
+
+**`mode: "custom"` removes every built-in page margin — bring your own containers.** The content area becomes truly full-bleed: no top offset below the tab strip, no horizontal gutters, no bottom margin. Uncontained sections render text touching the viewport edge — the "needs margins on home page" defect. Requirements:
+
+- Every section, hero included, wraps its inner content in the same shared container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`. Full-bleed *backgrounds* go on the outer section element; the *content* stays inside the container.
+- The first section carries top padding so content clears the tab strip (`pt-8`–`pt-12`, or the hero's own `py-16`+).
+- The last section carries bottom padding (`pb-16`+) so the page doesn't end flush against the viewport.
+- Use one consistent max-width across all sections — mixed `max-w-5xl` / `max-w-7xl` sections read as misaligned columns.
+
+Pitfalls to verify after editing:
+
+1. **Frontmatter `title` and `description` still render** in the browser tab `<title>` and `<meta description>` even though the auto page header is hidden. Set them to whatever the source uses for the homepage's browser-tab title.
+2. **If you did add rules to `custom.css`, confirm the file is being loaded**: `curl -s http://localhost:3000/ | grep -c 'data-current-path'` must be `> 0`. Restart `mint dev` after creating or moving the file.
+
+After applying Strategy B, navigate between `/` and any other docs page and confirm the navbar + tab strip stay completely still — no visual shift, no layout reflow. That continuity *is* the point. Then scan the homepage at desktop and mobile widths for the margin requirements above.
 
 ### Gotcha 3: Style with Tailwind utilities, never with custom CSS classes in an inline `<style>` block
 
@@ -258,7 +337,9 @@ Use only `<div>`, `<section>`, `<a>`, `<img>`, `<svg>`, `<h*>`, `<p>`, `<ul>`/`<
 ### 1. Frontmatter
 
 - Set `mode: "custom"` and use the source page title or company docs name for `title`; do not hard-code `"Welcome"` when it is not the source title.
-- `mode: "custom"` hides the sidebar, table of contents, and footer — but keeps the top navbar and tabs. When a fully chromeless design is desired (custom header replacing the navbar), add the CSS from Gotcha 2 to `custom.css` at the repo root. Do not put it in an inline `<style>` block (Gotcha 3).
+- `mode: "custom"` hides the sidebar, table of contents, auto page header, and footer — but keeps the top navbar and tabs (that is Strategy B's shared chrome, for free). Never substitute `mode: "wide"` or an unset `mode` plus CSS hiding: `wide` does not hide the sidebar, and the sidebar's DOM id shifts across Mintlify versions (`#sidebar` → `#sidebar-content`), so CSS-only hiding silently breaks.
+- `mode: "custom"` also strips all built-in page margins — every section must supply its own `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` container (see Gotcha 2 → Strategy B).
+- When a fully chromeless design is desired (custom header replacing the navbar), add the CSS from Gotcha 2 → Strategy A to `custom.css` at the repo root. Do not put it in an inline `<style>` block (Gotcha 3).
 
 ### 2. Optional Custom Site Header
 
@@ -286,6 +367,15 @@ Only build one when the brand's marketing site has a distinctive navbar you are 
 - Primary CTA button (brand background, links to quickstart) + secondary CTA button (outline style).
 - Buttons: `rounded-lg`/`rounded-full`, hover transitions, `flex-wrap` + `gap-3`/`gap-4`, actionable text.
 - For hero media, use the asset inventory's chosen file, intended crop, and light/dark variant. Add meaningful `alt` text for informative media and `alt=""` for purely decorative media; use `noZoom` and responsive sizing.
+
+#### Hero search box / "Ask AI" chips — deep-link into the assistant
+
+When the source homepage leads with a prominent search bar or "popular question" chips (common on help-center / knowledge-base landings), wire them to Mintlify's built-in AI assistant instead of building a separate search page or route. Mintlify intercepts an `?assistant=<url-encoded query>` param on any page — it opens the assistant panel and auto-submits that query:
+
+- **Search bar:** a GET `<form>` on the current URL whose submit produces `?assistant=<the typed text>`.
+- **Popular-question chips:** plain `<a href="?assistant=How%20do%20I%20reset%20my%20password%3F">` pills — each deep-links a pre-encoded question straight into the assistant.
+
+This needs zero JS and no search route. Confirm the AI assistant is enabled for the project first (it depends on the site's AI features being on).
 
 #### Adaptive hero & CTA backgrounds (required for any tinted/dark section)
 
@@ -417,12 +507,14 @@ curl -s http://localhost:3000/ | grep -c 'your distinctive string here'
 
 Check one string per section — hero, quick start, cards, and CTA banner at minimum.
 
-**Chrome audit (when using the CSS from Gotcha 2):** open the rendered page and confirm:
-- no empty 48px strip at the top (tabs wrapper removed)
-- hero extends edge-to-edge (no 19rem gutter on the left)
-- no default Mintlify navbar or sidebar visible
+**Chrome audit:** open the rendered `/` and confirm:
+- no docs sidebar visible (Strategy B: `mode: "custom"` set — not `wide`, not CSS hiding; Strategy A: chrome CSS applied)
+- Strategy A only: no empty 48px strip at the top (tabs wrapper removed), hero extends edge-to-edge (no 19rem gutter on the left), no default Mintlify navbar visible
+- Strategy B only: the navbar + tab strip render identically on `/` and on any content page (navigate between them — zero shift)
 
-If chrome is still visible, your `custom.css` is not being picked up. Check that the file is at the repo root, that `mint dev` was restarted after creating it, and that the rules made it into the rendered HTML: `curl -s http://localhost:3000/ | grep -c 'data-current-path="/"\] #navbar'` should be `> 0`.
+If chrome-hiding CSS you wrote isn't taking effect, check that `custom.css` is at the repo root, that `mint dev` was restarted after creating it, and that the `data-current-path`-scoped `#navbar` rule made it into the rendered HTML. If the rule is present but the element still shows, inspect the live DOM because the selector may have moved across Mintlify versions.
+
+**Margin audit (`mode: "custom"` pages):** at desktop and mobile widths, confirm no text or card touches the viewport edge, the first section clears the tab strip, the page ends with bottom padding, and every section shares the same max-width column. See Gotcha 2 → Strategy B for the container spec.
 
 **Styling audit (Gotcha 3):** confirm Tailwind compiled successfully and no custom CSS rules were stripped:
 

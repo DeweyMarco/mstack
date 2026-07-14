@@ -119,6 +119,7 @@ Minimal example:
 - Do not invent generic labels like `Overview 1`, `Resources`, or `Learn more` when a more specific label exists.
 - Keep primary journeys visible without requiring deep navigation.
 - **Do not wrap a single page in a sibling group whose label matches the page label.** A `{ "group": "Overview", "pages": ["api-reference/introduction"] }` next to multi-page sibling groups (`V2 endpoints`, `V1 endpoints`) renders as a redundant `Overview > Overview` row pair in the sidebar. Tab-level `pages` arrays accept a mix of string slugs and group objects, so flatten the single page to a top-level entry alongside the sibling groups. See [reference.md → Single-page wrapper groups create duplicate sidebar entries](reference.md). This is a `/preview-qa` Gate 3 check.
+- **Rename duplicated category landing pages with `sidebarTitle: "Overview"`.** When a multi-page group's landing page shares the group's title (sidebar shows `Manage > Manage > About...` or `Cortex MCP > Cortex MCP > Configuring...`), set `sidebarTitle: "Overview"` in the landing page's frontmatter. The page's H1, URL, and SEO title stay the same; only the sidebar label changes. Apply consistently across **every** duplicated group/page pair in one pass — the defect almost never appears in isolation, and partial fixes are obvious to reviewers. Skip this when the landing page is the *only* page in its group (then the group itself should be flattened — see previous bullet).
 - **Use icons only on top-level major sections.** Sub-groups and individual pages stay icon-free. Icons on every level (top groups *and* their sub-groups *and* the pages inside) read as decorative noise rather than section signals — the parent icon already established the section. The single exception is a flattened single-page peer (per the previous bullet): when an `Overview` page sits as a peer of iconed sibling groups at the same level, keep its `frontmatter.icon` so it doesn't read as an orphaned subpage. See [reference.md → Icon hierarchy: top-level only](reference.md). This is a `/preview-qa` Gate 3 check.
 
 ### Mintlify collapsible navigation guardrail (critical)
@@ -155,6 +156,44 @@ Apply Pattern A when one section is the problem; apply Pattern B when every sect
 - No `*.mdx` file under the affected product prefix is orphaned from nav.
 
 Fail the task if any parity check fails; fix the restructuring logic instead of hand-dropping pages.
+
+### Multi-product top dropdowns — `navigation.products` (theme-sensitive)
+
+When the source's chrome shows a product selector next to the logo (clickable label like "Knowledge base" / "API Documentation" that swaps the entire tab bar and sidebar when selected — e.g. the Benchling docs or Supermetrics docs), the right surface is `navigation.products`, **not** a row of top-level `tabs`. The give-away in the source is that selecting the dropdown changes *both* the visible tabs and the sidebar contents.
+
+Two non-obvious constraints that cost real time when missed:
+
+1. **Theme matters — and mstack is always on `luma`.** `navigation.products` renders as a navbar dropdown next to the logo only on themes that support it (`luma` and `aspen` confirmed working). On `maple` the same config falls through to a sidebar-rendered selector that looks like a defect — one of several reasons mstack never uses `maple` (see *Theme choice affects the navbar architecture* below and `create-landing-page` → Gotcha 2 → "Theme policy"). Because every mstack preview is on `luma`, the product selector just works; if you ever encounter a `maple` site, convert it to `luma` before debugging the config.
+2. **Flatten `products[*].tabs` into `products[*].groups`.** Each product can contain `tabs` *or* `groups`. Leaving `tabs` in place renders a second tab row in the navbar (below the product selector), crowding out the selector label. Each product's groups should sit directly in the sidebar so the navbar only shows: logo · `<Product selector>` · search · utility links · CTA.
+
+Canonical shape:
+
+```json
+{
+  "navigation": {
+    "products": [
+      {
+        "product": "Knowledge base",
+        "icon": "book",
+        "groups": [/* sidebar groups for product 1 */]
+      },
+      {
+        "product": "API Documentation",
+        "icon": "code",
+        "groups": [/* sidebar groups for product 2 */]
+      }
+    ]
+  }
+}
+```
+
+Mintlify also renders a second copy of the selector at the top of the sidebar by default. If the source only shows the navbar copy, hide the sidebar copy in `custom.css` rather than removing it from config:
+
+```css
+#sidebar [data-product-selector] { display: none; }
+```
+
+Verify after editing by loading a page from each product and confirming (a) the navbar shows the product label + icon + chevron, (b) clicking it opens a menu of the other products, and (c) the sidebar shows only that product's groups.
 
 ### Tabs vs sibling groups — match the source toggle
 
@@ -237,6 +276,20 @@ Always copy `docs.json` to a temp backup before running a rebuild script, and re
 - Use realistic labels, examples, and card descriptions.
 - Match the site's existing terminology consistently.
 
+### Do not duplicate the sidebar in category landing-page bodies
+
+Migration transformers (especially for GitBook and Docusaurus sources) often emit a synthesized "Explore guides for X below" intro plus a `<CardGroup>` listing every child page on each category landing page. The sidebar already lists those children — the in-body CardGroup is a verbatim duplicate of the navigation a click away.
+
+When the source's category landing page has its own intro paragraph or description, keep it. When the source page is empty (the agent inserted the boilerplate `Explore X below` + auto-generated `<CardGroup>` because the source had no body), strip both. The page should render with just the title and any real description, and let the sidebar handle discovery.
+
+Detection: grep for repeated synthesized phrases (`Explore guides for`, `Explore X below`, `In this section you'll find`) followed by `<CardGroup>` whose `<Card href>` values match the page's siblings in `docs.json`.
+
+### Icon parity — match the source's icon usage
+
+Don't add icons to top-level tabs, groups, or nested groups *unless the source actually uses them*. Many docs sites use clean text-only navigation, and adding Font Awesome icons everywhere — even tasteful ones — visibly diverges from the source brand.
+
+Check the source navbar and sidebar before adding any `icon` field. If the source is icon-free, strip `icon:` from every tab and nested group in `docs.json`. The reverse is also a defect: if the source shows distinct icons per top-level section, mirror them (see *Pick the icon library before mapping icons* below for the library-mismatch trap).
+
 ## Homepage and landing page rules
 
 For docs homepages and landing pages:
@@ -249,6 +302,21 @@ For docs homepages and landing pages:
 6. End with a closing CTA only if it helps the main journey.
 
 Avoid marketing-style bloat. A docs homepage should help users start and orient quickly.
+
+### Chrome continuity — match the homepage's navbar/tabs to the rest of the site
+
+The single most jarring homepage defect is a visible chrome shift between `/` and every other docs page. Symptoms: the navbar logo jumps a few pixels, the tab row reflows, the demo CTA changes shape, the search bar reposition. Reviewers describe it as "jarring", "stitched together", or "two different sites". Almost always the cause is the same: the landing page uses `mode: "custom"` with a bespoke `<div role="banner">` header that looks *close* to Mintlify's standard navbar but isn't pixel-identical.
+
+Pick the chrome strategy before building the landing:
+
+- **Shared chrome (default).** When the rest of the docs use Mintlify's standard navbar + tab strip (Stripe, HubSpot, Vercel, and most modern dev-docs sites do this), the homepage should reuse the same chrome. Set `mode: "custom"` on the homepage — on `luma` it keeps the navbar + tab strip while natively hiding the sidebar, TOC, page header, and footer-nav — and move marketing-nav items into `docs.json` (`navbar.links` for the link row, `navbar.primary` for the CTA). Zero visible seam. Two traps: `mode: "wide"` does **not** hide the sidebar, and CSS-only sidebar hiding breaks silently when Mintlify's DOM ids shift (`#sidebar` → `#sidebar-content`). Because `mode: "custom"` also strips all built-in margins, every homepage section must supply its own max-width container with horizontal gutters. See `create-landing-page` → Gotcha 2 → Strategy B for the full spec.
+- **Bespoke header (occasional).** Only when the source's marketing site has a navbar that *cannot* be replicated with `docs.json` alone (composed logo + tagline, multi-row chrome, unusual layout) and the customer explicitly wants it on the homepage only. Accept that the chrome shift will be visible and ship the bespoke header at pixel parity with the standard navbar's height, font weights, and spacing.
+
+Default to shared chrome. The bespoke-header path almost always produces the "jarring shift" feedback within a review cycle; switching back is cheap (the existing hero + sections survive intact), so prefer to start there.
+
+#### Theme choice affects the navbar architecture (full-bleed heroes)
+
+**mstack always uses `luma` and never `maple`** — and the navbar architecture is the main reason. A full-bleed hero homepage under a full-width sticky navbar is free on `luma` (one full-width sticky `header#navbar`) but expensive on `maple`, which splits the nav into a fixed logo `#sidebar` plus a separate `#navbar-transition-maple` tab strip starting at x≈304px — a full-bleed hero bleeds through both and the bar isn't full-width or solid on scroll without ~100+ lines of fragile CSS. Set `"theme": "luma"` on every site; if you inherit a `maple` site (or `mint init` scaffolds one), convert it to `luma` rather than writing CSS to fake the bar. Theme is site-wide, so re-check a normal content page after switching. This is the same class of theme-sensitivity as `navigation.products` above; see `create-landing-page` → Gotcha 2 → "Theme policy" for the DOM detail.
 
 ## Matching a source site's branding
 
