@@ -65,7 +65,7 @@ Load only the reference files needed for the current conversion:
 
 - Mirror the live site's navigation structure for all discovered in-scope pages.
 - Mirror nesting depth, not just membership: when a source sidebar entry has child pages beneath it (ReadMe parent pages with children, GitBook nested items), model it as a **nested group** whose first page is the parent page carrying `sidebarTitle: "Overview"` so its label doesn't duplicate the group name. Never flatten a parent's children into siblings — a flat list where the source shows an expandable sub-group is a nav-parity defect.
-- Use `tabs` or `products` according to the existing repo pattern.
+- Use `tabs` or `products` according to the existing repo pattern — but never more than 4 top-level tabs. If the nav needs more than 4 top-level sections, use `navigation.products` (product switcher dropdown) instead of a longer tab row. See [references/docs-json.md](references/docs-json.md) → "Tab cap".
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - For OpenAPI-backed sections, reference the spec with the `openapi` key instead of listing generated endpoints manually.
 - Ensure every converted site has the root-level `contextual` menu config.

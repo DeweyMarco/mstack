@@ -161,6 +161,8 @@ Fail the task if any parity check fails; fix the restructuring logic instead of 
 
 When the source's chrome shows a product selector next to the logo (clickable label like "Knowledge base" / "API Documentation" that swaps the entire tab bar and sidebar when selected — e.g. the Benchling docs or Supermetrics docs), the right surface is `navigation.products`, **not** a row of top-level `tabs`. The give-away in the source is that selecting the dropdown changes *both* the visible tabs and the sidebar contents.
 
+**Tab cap: never more than 4 top-level tabs.** This is the second, source-independent trigger for `navigation.products`. When the nav needs more than 4 top-level sections — because the source paints 5+ items in its horizontal row, or because a restructure produces them — do not ship a 5+-tab row. Group the sections by product or audience and move them into `navigation.products` so the navbar shows a compact product switcher instead of a crowded row. When the source itself has more than 4 tabs this is a deliberate divergence from source parity: record it in the QA report so `/preview-qa`'s horizontal-row check reads the shorter row as intended, not as missing tabs. External destinations that lived in the replaced row (`href` tab entries) move to `navbar.links` — a products layout has no tab row to host them.
+
 Two non-obvious constraints that cost real time when missed:
 
 1. **Theme matters — and mstack is always on `luma`.** `navigation.products` renders as a navbar dropdown next to the logo only on themes that support it (`luma` and `aspen` confirmed working). On `maple` the same config falls through to a sidebar-rendered selector that looks like a defect — one of several reasons mstack never uses `maple` (see *Theme choice affects the navbar architecture* below and `create-landing-page` → Gotcha 2 → "Theme policy"). Because every mstack preview is on `luma`, the product selector just works; if you ever encounter a `maple` site, convert it to `luma` before debugging the config.
@@ -222,6 +224,7 @@ Apply this workflow when `docs.json` has a single tab with many flat groups, whe
 - Before designing tabs, look at the customer's public docs landing page (for example via `WebFetch` or the external-links context) and use its top-level sections as your tab list.
 - If the customer site exposes Payments / API Reference / Developer Tools at the top, your tabs should mirror that — even when the repo folders are organized differently.
 - Only invent a tab when a product area is large enough to justify its own top-level space (rule of thumb: >50 pages or a distinct user persona).
+- Cap the tab list at 4. If the taxonomy yields more than 4 top-level sections, do not add a fifth tab — group the sections by product or audience and switch to `navigation.products`. See *Multi-product top dropdowns — `navigation.products`* above (the "Tab cap" rule).
 - Do not use `tabs` if the source has no top-of-page tab toggle. Use sibling `groups` instead. See *Tabs vs sibling groups — match the source toggle* above.
 
 **2. Plan before writing. Do a scale audit first.**
@@ -351,7 +354,7 @@ When mirroring a section that has its own sidebar chrome:
 
 ### Top horizontal bar — one row, one config surface
 
-If the source paints a single horizontal row of links above (or below) its navbar — `Guides | API Explorer | Discussions | News | Status | Tech Blog`, etc. — every item in that row must live in **one** Mintlify config surface: `navigation.tabs`. Splitting the row across `navigation.tabs`, `navbar.links`, and `navigation.global.anchors` is the most common cause of "horizontal bar doesn't match" defects, because each of those surfaces renders in a different region of the UI:
+If the source paints a single horizontal row of links above (or below) its navbar — `Guides | API Explorer | Discussions | Status`, etc. — every item in that row must live in **one** Mintlify config surface: `navigation.tabs`. Splitting the row across `navigation.tabs`, `navbar.links`, and `navigation.global.anchors` is the most common cause of "horizontal bar doesn't match" defects, because each of those surfaces renders in a different region of the UI. (One exception overrides the one-surface rule: the row holds at most 4 tabs — a source row with 5+ items becomes a `navigation.products` switcher instead, per the "Tab cap" rule in *Multi-product top dropdowns* above.)
 
 | `docs.json` surface | Where it renders | Use for |
 |---|---|---|
@@ -371,9 +374,7 @@ The trap is reaching for `navbar.links` whenever an item is external (Status pag
       { "tab": "Guides", "groups": [/* ... */] },
       { "tab": "API Explorer", "groups": [/* ... */] },
       { "tab": "Discussions", "href": "https://discuss.example.com" },
-      { "tab": "News and Updates", "groups": [/* ... */] },
-      { "tab": "Status", "href": "https://status.example.com" },
-      { "tab": "Tech Blog", "href": "https://blog.example.com" }
+      { "tab": "Status", "href": "https://status.example.com" }
     ]
   },
   "navbar": {

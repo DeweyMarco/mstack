@@ -4,6 +4,7 @@
 
 - Mirror the exact navigation structure from the live site for all discovered in-scope pages.
 - Use `tabs` for top-level tabs, each with `tab` and `groups`, or `products` for product-style top-level tabs, each with `product`, `description`, `icon`, and `groups`. Match the existing repo pattern.
+- **Tab cap: never more than 4 top-level tabs.** If the nav needs more than 4 top-level sections, use `navigation.products` (product switcher dropdown) instead of a longer tab row — see *Tab cap* below.
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - File paths in `pages` arrays must not include `.mdx`.
 - Preserve **customer-authored** `colors`, `logo`, `favicon`, `fonts`, `navbar`, `footer`, and `seo` unless updating them is explicitly requested. **Exception:** if these fields contain Mintlify starter defaults (anything inherited from `mint init` or a docs template), they are placeholders to audit, not existing config to keep. The Blog global anchor, Twitter/GitHub footer socials, and "Get started" CTA from the default starter are the usual offenders.
@@ -15,7 +16,7 @@
 
 For migrations whose goal is to match an existing site, every top-level chrome element in `docs.json` must mirror what the source actually shows. Verify each of these against the rendered source:
 
-- `navigation.tabs` — every item the source paints in its single horizontal row above (or below) the navbar belongs here, in source-visual order, left-to-right. External destinations (Status pages, off-site forums, blogs) use `{ "tab": "...", "href": "..." }` — do not push them to `navbar.links` just because they leave the docs site. See *One visible horizontal row = one config surface* below.
+- `navigation.tabs` — every item the source paints in its single horizontal row above (or below) the navbar belongs here, in source-visual order, left-to-right. External destinations (Status pages, off-site forums, blogs) use `{ "tab": "...", "href": "..." }` — do not push them to `navbar.links` just because they leave the docs site. See *One visible horizontal row = one config surface* below. Exception: when the source row paints **more than 4 items**, do not reproduce it — restructure into `navigation.products` per the *Tab cap* rule below.
 - `navigation.global.anchors` — only present when the source shows a persistent **sidebar** anchor rail (icon + label list at the top of the sidebar). If absent on the source, the field should be absent in `docs.json`. Do not use this surface as a fallback for items that didn't fit in `navigation.tabs`.
 - `navbar.links` — only the right-side utility text links the source actually anchors to the right of the navbar (e.g. sign-in, contact). Items the source shows in its inline horizontal row do not belong here even when they are external.
 - `navbar.primary` — the single right-side CTA button. Absent if the source has no CTA.
@@ -31,14 +32,24 @@ Rule for navbar generation:
 
 1. Inspect the source navbar and identify each visible region — the inline horizontal row, the right-side utility links, the right-side CTA, the sidebar anchor rail (if any).
 2. Map each item to exactly one `docs.json` surface using the table in `style-docs/SKILL.md` → *Top horizontal bar — one row, one config surface*.
-3. For the inline horizontal row: emit every item into `navigation.tabs` in source-visual order, using `href` on the tab entry for external destinations rather than rerouting them to `navbar.links`.
+3. For the inline horizontal row: emit every item into `navigation.tabs` in source-visual order, using `href` on the tab entry for external destinations rather than rerouting them to `navbar.links` — unless the row has more than 4 items, in which case restructure into `navigation.products` per the *Tab cap* rule below instead of emitting a 5+-tab row.
 4. After emitting, audit for duplicates: no item should appear in more than one of `navigation.tabs`, `navbar.links`, `navigation.global.anchors`. If the same external link is registered twice, drop it from `navbar.links` / `global.anchors` and keep it in `tabs`.
 
 This is `/preview-qa` Gate 3's "Top horizontal-bar single-row parity" check — generating the right shape upfront avoids the post-hoc cleanup.
 
+#### Tab cap: at most 4 top-level tabs
+
+`navigation.tabs` must never contain more than 4 entries, regardless of what the source shows. A 5+-item tab row is crowded chrome and a defect in its own right, so when the source paints more than 4 items in its horizontal row (or a restructure produces more than 4 top-level sections):
+
+1. Group the sections by product or audience and emit them as `navigation.products` — the navbar then shows a compact product switcher next to the logo instead of the long row.
+2. Move external destinations that lived in the row (`href` tab entries) to `navbar.links`; a products layout has no tab row to host them.
+3. Record the divergence from the source's row in the parity manifest / QA report so `/preview-qa`'s "Top horizontal-bar single-row parity" check reads the switcher as intentional, not as missing tabs.
+
+Follow `style-docs/SKILL.md` → *Multi-product top dropdowns — `navigation.products`* for the shape rules (`groups` not `tabs` inside each product, hiding the duplicate sidebar selector).
+
 #### Per-tab sidebar parity for multi-tab sites
 
-Mintlify's per-tab nav model means **every top-level tab has its own independent sidebar** (`tabs[i].groups[]`). For sites with 5+ top-level tabs (developer portals, product hubs, enterprise docs platforms), the conversion is not "one nav" but "N navs" — and each tab's sidebar must mirror the **source's sidebar for that same tab**, not be inferred from the file tree.
+Mintlify's per-tab nav model means **every top-level tab has its own independent sidebar** (`tabs[i].groups[]`). For sites with many top-level sections (developer portals, product hubs, enterprise docs platforms), the conversion is not "one nav" but "N navs" — and each section's sidebar must mirror the **source's sidebar for that same section**, not be inferred from the file tree. Under the *Tab cap* rule above, a source with 5+ tabs lands as `navigation.products`; the per-section discipline below applies identically to each `products[i].groups[]`.
 
 The recurring failure mode: a transformer flattens the file system into one top-level tab and dumps every other tab's pages into a generic `Reference` or `Misc` group. JSON validates, every page is reachable, every link works — but the sidebar on `/connect-data/*` shows BI tools next to changelog entries next to admin SDK references, none of which the source has in that sidebar.
 
