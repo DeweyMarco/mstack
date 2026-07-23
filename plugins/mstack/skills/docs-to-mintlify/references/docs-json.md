@@ -12,6 +12,18 @@
 - Add root-level `api` config whenever the site has OpenAPI specs.
 - Validate with `python3 -c "import json; json.load(open('docs.json'))"` after every structural edit.
 
+### Navigation quality gate
+
+Run this small cleanup before writing generated navigation. It prevents the most common preview defects without redesigning the source IA:
+
+- Put a section landing or overview page first in its group, and include every page exactly once.
+- Do not place the site root `index` inside an existing sidebar group unless the source visibly has a Home row.
+- Flatten single-page wrapper groups when the group label duplicates the page's `sidebarTitle` or `title`.
+- Keep icons on top-level sections only; nested groups and ordinary pages should not repeat them.
+- When the source uses collapsible sidebar sections, set `expanded: false` on nested groups only; the setting has no effect on top-level groups.
+- Preserve source labels, order, and nesting. Do not invent tabs or regroup content merely to make the tree look cleaner.
+- Before saving, recursively collect page strings from `tabs`, `products`, `groups`, and `pages`; fail if there are missing pages, dangling paths, or duplicates.
+
 ### Chrome Audit (Parity Migrations)
 
 For migrations whose goal is to match an existing site, every top-level chrome element in `docs.json` must mirror what the source actually shows. Verify each of these against the rendered source:
@@ -162,6 +174,8 @@ Recipe:
 5. Validate with `python3 -c "import json; json.load(open('docs.json'))"`.
 
 **When NOT to use Tier 1:** if the customer is migrating *because* their old nav was confusing, mirroring it defeats the purpose. Use Tier 2, or apply `/style-docs` "Restructuring a large, flat navigation" after Tier 1 lands. Default to Tier 1 for fidelity-first migrations and ask the user before deviating.
+
+**After mirroring, polish scannability (safe for fidelity migrations too).** Mirroring source verbatim often reproduces flat sections and long, repetitive sidebar labels. Once Tier 1 lands, apply `/style-docs` → "Nest flat groups, and collapse nested subgroups by default" and "Shorten long, repetitive sidebar labels with `sidebarTitle`". Both preserve parity — page `title`/H1 and the full page set stay verbatim; only the sidebar label and grouping change — so they are safe to run even on fidelity-first previews.
 
 ### Tier 2 (fallback): Walk the directory tree
 

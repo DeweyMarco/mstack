@@ -1,6 +1,6 @@
-# mstack — Claude Code Skills for Mintlify
+# mstack — Codex Skills for Mintlify
 
-This repo is a marketplace plugin for Mintlify documentation workflows, compatible with Claude Code, Codex, and Cursor.
+This repo is a marketplace plugin for Mintlify documentation workflows, compatible with Codex, Codex, and Cursor.
 
 ## Structure
 
@@ -11,7 +11,7 @@ mstack/
 │   └── install-cursor.sh                 # Copies skills into ~/.cursor/skills
 └── plugins/
     └── mstack/
-        ├── .claude-plugin/plugin.json   # Claude Code manifest
+        ├── .Codex-plugin/plugin.json   # Codex manifest
         ├── .codex-plugin/plugin.json    # Codex manifest
         └── skills/
             ├── docs-to-mintlify/SKILL.md        # migrate any docs site to Mintlify
@@ -30,11 +30,6 @@ mstack/
                 ├── SKILL.md                      # polish docs IA, components, and theming
                 └── reference.md                  # extended design heuristics
 ```
-
-## Conventions
-
-- **Theme: always `luma`, never `maple`.** Every mstack preview uses the `luma` theme. `luma`'s single full-width sticky navbar handles full-bleed hero homepages, `navigation.products` selectors, and homepage↔content chrome continuity natively; `maple`'s split navbar repeatedly costs hours of fragile CSS. `mint init` scaffolds `maple` — always overwrite it with `luma`, and convert any inherited `maple` site before styling. Deviate to another supported theme only on an explicit, specific customer request; `maple` is never an option. Detail lives in `create-landing-page` → Gotcha 2 → "Theme policy" and `docs-to-mintlify/references/docs-json.md`.
-- **Tab cap: never more than 4 top-level tabs.** When a nav needs more than 4 top-level sections, use a `navigation.products` product switcher dropdown instead of a longer tab row — even when the source paints 5+ items in its row (a deliberate parity divergence; record it in the QA report). Detail lives in `style-docs` → "Multi-product top dropdowns — `navigation.products`" and `docs-to-mintlify/references/docs-json.md` → "Tab cap".
 
 ## Development
 

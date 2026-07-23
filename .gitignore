@@ -1,2 +1,15 @@
 feedback/
 .DS_Store
+
+# Eval outputs
+evals/runs/
+evals/artifacts/
+evals/tmp/
+
+# Local preview helper checkouts
+/mstack/
+
+# Local environment
+.env
+.env.*
+!.env.example

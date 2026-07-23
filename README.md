@@ -67,6 +67,22 @@ When migrating an existing docs site to Mintlify, apply the skills in this order
 
 For a greenfield docs site (no source to migrate), skip step 1 and hand-bootstrap a minimal `docs.json` plus stub pages before `/style-docs`.
 
+## Evals
+
+This repo includes a lightweight eval runner for previews created by [`sophiabarness/preview-automation`](https://github.com/sophiabarness/preview-automation). That automation creates `<company>-preview`, launches a Cursor cloud agent that clones mstack into `./mstack/`, and expects the generated preview repo to ignore that helper checkout in both `.gitignore` and `.mintignore`.
+
+After the automation has merged its PRs into `main`, clone the generated preview repo and run:
+
+```bash
+node evals/run-preview-eval.mjs \
+  --preview-repo /path/to/company-preview \
+  --source-url https://docs.example.com \
+  --company company \
+  --preview-url https://company-preview.mintlify.app
+```
+
+Reports are written to `evals/runs/<company>/`, which is gitignored. See [`evals/README.md`](./evals/README.md) for the full framework and options.
+
 ## Skills overview
 
 ### `/docs-to-mintlify`

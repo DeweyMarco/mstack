@@ -273,6 +273,35 @@ If any gate fails, fix the algorithm — do not hand-patch the output.
 
 Always copy `docs.json` to a temp backup before running a rebuild script, and restore it between iterations so each run starts from the original input.
 
+**10. Nest flat groups, and collapse nested subgroups by default.**
+
+A section is "flat" when its `pages` array holds a long run of direct string slugs (commonly 12+) before any subgroup. Flattening it is reorganization, not deletion — every slug must survive the parity gate in step 8.
+
+- Keep the section's overview/landing page as the first direct entry, then move the remaining direct pages into 2–4 semantically named nested subgroups (e.g. "Account & Access", "Buckets & Files", "Data Protection & Rules"). Do not dump them into one catch-all "Guides" subgroup.
+- Set `"expanded": false` on **every** nested subgroup — both the ones you create and the ones that already existed — so the section reads as a short list of collapsible headers instead of a wall. Mintlify auto-expands whichever subgroup contains the active page. Top-level groups cannot collapse, so this only applies to groups nested inside another group's `pages`.
+- Icons stay on top-level groups only; nested subgroups and pages stay icon-free (see *Navigation and information architecture* above).
+
+### Shorten long, repetitive sidebar labels with `sidebarTitle`
+
+Sidebar labels default to each page's frontmatter `title`. When a corpus shares boilerplate across most titles — a leading `How to`, a trailing product suffix (`in Backblaze B2 Cloud Storage`, `with Backblaze B2`, `Integration with <Product>`, `in the Enterprise Web Console`) — every sidebar row becomes long and near-identical, and the meaningful words get pushed off-screen. This is the "titles are too long / the nav is unscannable" complaint.
+
+Fix it by adding a short `sidebarTitle` to each affected page. This is the correct Mintlify lever because it changes **only** the sidebar label:
+
+- `title` -> stays verbatim from source (page H1, browser tab `<title>`, `<meta description>` context, and navigation-backed search all keep source parity).
+- `sidebarTitle` -> the condensed label shown in the sidebar.
+
+Because `title` is untouched, this respects the *Source-parity rule* — you are condensing a long, repetitive source label for scannability, not renaming the page or inventing new terminology.
+
+Apply it deterministically, never by hand across a large corpus:
+
+1. Skip any page that already has a `sidebarTitle` (a `sidebarTitle: "Overview"` convention on group landing pages is common — leave it).
+2. Strip a leading `How to ` (case-insensitive); if the remainder now starts lowercase, capitalize the first letter (`How to install …` -> `Install …`).
+3. Strip trailing product boilerplate with an ordered longest-first list (`" in Backblaze B2 Cloud Storage"`, `" with Backblaze B2"`, `" Integration with Backblaze B2"`, `" in the Enterprise Web Console"`, …). Repeat until nothing matches.
+4. Preserve intentional lowercase brand names (`bunny.net`, `odrive`, `genblaze`) — only re-capitalize when you actually stripped a leading `How to `.
+5. Only write `sidebarTitle` when the result differs from `title` and is non-empty. Insert it on the line directly after `title:` in the frontmatter.
+
+Generate the proposed `slug -> old -> new` mapping to a review file first, eyeball a sample for over-stripping, then apply. The edit must be purely additive (one new frontmatter line per page); confirm with `git diff --numstat` that no body lines changed. Apply the same stripping to long **group** labels in `docs.json` (`How to Integrate MSP360 with Backblaze B2` -> `Integrate MSP360`).
+
 ### Clarity and trust
 
 - Remove placeholder copy, vague CTAs, and decorative sections that do not help users complete a task.
