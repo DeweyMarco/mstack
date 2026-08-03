@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mstack",
+  "description": "Mintlify documentation workflow skills for solutions engineering: source-site migration, broken link repair, styling, replica landing pages, launch-quality preview review, and agent readiness.",
+  "owner": {
+    "name": "Marco Dewey",
+    "email": "marco@mintlify.com"
+  },
+  "plugins": [
+    {
+      "name": "mstack",
+      "description": "Mintlify documentation workflow skills — migration, link fixing, agent score improvement, landing pages, style, and preview QA.",
+      "author": {
+        "name": "Marco Dewey",
+        "email": "marco@mintlify.com"
+      },
+      "category": "documentation",
+      "source": "./plugins/mstack"
+    }
+  ]
+}

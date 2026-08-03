@@ -18,10 +18,18 @@ for skill_dir in "$source_dir"/*; do
   skill_name="$(basename "$skill_dir")"
   target_skill_dir="$target_dir/$skill_name"
 
+  if [[ -d "$target_skill_dir" && ! -L "$target_skill_dir" ]]; then
+    echo "Replacing copied directory $target_skill_dir with a symlink." >&2
+    if ! diff -rq "$skill_dir" "$target_skill_dir" >/dev/null 2>&1; then
+      echo "  Warning: it differs from the repo; local edits there will be lost." >&2
+    fi
+  fi
+
   rm -rf "$target_skill_dir"
-  cp -R "$skill_dir" "$target_skill_dir"
-  echo "Installed $skill_name -> $target_skill_dir"
+  ln -s "$skill_dir" "$target_skill_dir"
+  echo "Linked $skill_name -> $target_skill_dir"
 done
 
 echo
-echo "mstack Cursor skills installed in $target_dir"
+echo "mstack Cursor skills linked into $target_dir"
+echo "They now track the repo, so edits in either place are the same file."
