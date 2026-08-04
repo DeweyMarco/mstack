@@ -7,8 +7,10 @@ Use this workflow whenever the user supplies assets or a source company site/rep
 Inspect the project and source before writing the landing-page layout.
 
 - Read `docs.json` for `logo`, `favicon`, `colors`, `fonts`, social images, and existing asset paths.
+- When URLs are not provided, derive the customer domain from the parity manifest, `docs.json` logo/navbar links, repository name, page metadata, or company name. Do not wait for the user to paste the marketing URL.
 - Search the repository for SVG, PNG, WebP, AVIF, GIF, MP4, WebM, and font files. Record dimensions and file sizes for raster/video assets.
 - On the rendered source page, inspect `<img>`, `<picture>`, `srcset`, video posters/sources, CSS `background-image`, masks, favicons, and Open Graph images. Inspect linked stylesheets and CSS variables when the visible asset URL is indirect.
+- Inspect the canonical marketing/product website even when the user supplied only a docs URL. Use the website's visual system when the docs source is sparse, stale, or visually generic.
 - Check the source's light and dark modes. Logos, screenshots, diagrams, and decorative textures can each have mode-specific files.
 - Check supplied brand folders or product repositories before downloading from the public site; those often contain cleaner vectors and higher-resolution exports.
 
@@ -28,6 +30,7 @@ Do not replace an available product screenshot with a generic illustration, trac
 ## 3. Localize and normalize
 
 - Put landing-page assets in a predictable project-owned directory such as `/images/landing/` or the repo's established asset directory. Use descriptive lowercase filenames and retain light/dark suffixes.
+- Validate every download before wiring it into `docs.json` or MDX: HTTP success, expected `Content-Type`, matching file signature, non-trivial byte size, and usable dimensions. Open SVGs as text and reject any file that contains HTML; SPA fallback pages are commonly downloaded under plausible image filenames.
 - Preserve SVG for logos, diagrams, and illustrations when the source file is trustworthy. Do not rasterize vectors solely for convenience.
 - Keep the highest useful raster resolution, but avoid shipping oversized originals when a lossless metadata strip or a visually equivalent WebP/AVIF export materially reduces weight. Never upscale a source.
 - Preserve transparency, animation, and video poster frames when they are part of the source experience. Add `muted`, `playsInline`, and a useful poster to autoplay video.
@@ -37,8 +40,10 @@ Do not replace an available product screenshot with a generic illustration, trac
 ## 4. Compose around the assets
 
 - Let the asset's native aspect ratio and focal point drive the container. Use `object-contain` for UI, diagrams, and logos; use `object-cover` only for photography or artwork with an intentional crop.
+- Treat words, UI labels, faces, and product controls inside media as protected content. Never use `object-cover`, square aspect classes, or fixed-height crops that clip them. Read raster/video dimensions before choosing the container and verify representative animation frames, not only the first frame.
 - Match the source placement before adding polish: full-bleed background, framed product UI, floating illustration, card thumbnail, or subtle texture are different roles.
 - Do not stack glow effects, gradients, and patterns over a strong company visual. Give product UI enough contrast and breathing room to remain readable.
+- Navigation-card media must communicate the linked task. If the source design uses rich product proof, do not ship large empty patterned panels with a tiny generic icon; use validated customer media, a compact source-backed product UI treatment, or reduce the media area's height.
 - Pair separate light/dark assets with `block dark:hidden` and `hidden dark:block`. When one asset works in both modes, verify contrast rather than duplicating it unnecessarily.
 - Use meaningful alt text when the image communicates product information. Use `alt=""` when it is decorative or repeats adjacent text.
 

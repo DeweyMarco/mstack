@@ -326,12 +326,14 @@ Check the source navbar and sidebar before adding any `icon` field. If the sourc
 
 For docs homepages and landing pages:
 
-1. Use a strong hero with one clear headline, one supporting sentence, and one primary CTA.
-2. Make the first meaningful action visible above the fold.
-3. Follow the hero with scannable navigation cards.
-4. Add a quick-start or first-request section early.
-5. Keep support, community, or secondary resources lower on the page.
-6. End with a closing CTA only if it helps the main journey.
+1. Find and inspect the customer's canonical marketing/product website even when the request supplies only a docs URL. Extract its actual typography, colors, backgrounds, shape language, density, chrome, and media before choosing a design.
+2. Use the website as visual truth when the old docs are sparse, stale, or generic. The docs homepage should be recognizable as the customer with the logo hidden, not as a reusable template with swapped colors.
+3. Use a strong hero with one clear headline, one supporting sentence, and one primary CTA.
+4. Make the first meaningful action visible above the fold.
+5. Follow the hero with scannable navigation cards. Large media areas need source-backed product proof or task-specific UI; avoid empty patterned panels with tiny generic icons.
+6. Add a quick-start or first-request section early.
+7. Keep support, community, or secondary resources lower on the page.
+8. End with a closing CTA only if it helps the main journey.
 
 Avoid marketing-style bloat. A docs homepage should help users start and orient quickly.
 

@@ -9,7 +9,7 @@ A collection of Claude Code skills for Mintlify documentation workflows.
 | [`/docs-to-mintlify`](./plugins/mstack/skills/docs-to-mintlify/SKILL.md) | Convert any existing docs site into a Mintlify-compatible repo with proper MDX files, components, navigation, and a parity manifest |
 | [`/fix-broken-links`](./plugins/mstack/skills/fix-broken-links/SKILL.md) | Fix all broken links in a Mintlify project until `mint broken-links` reports success |
 | [`/style-docs`](./plugins/mstack/skills/style-docs/SKILL.md) | Style and polish docs sites with strong source-parity IA, Mintlify-native components, and accessible theming |
-| [`/create-landing-page`](./plugins/mstack/skills/create-landing-page/SKILL.md) | Build replica-first custom Mintlify docs landing pages with source-matched structure, hero sections, navigation cards, and dark-mode support |
+| [`/create-landing-page`](./plugins/mstack/skills/create-landing-page/SKILL.md) | Build website-first Mintlify docs landing pages that carry the customer's real visual system, assets, and source-matched structure into a docs-first experience |
 | [`/preview-qa`](./plugins/mstack/skills/preview-qa/SKILL.md) | Mechanical parity gate that runs every deterministic check on a preview (chrome, icons, collapsibility, backgrounds, structural parity, visual verification) before handing off to `/han-review` |
 | [`/han-review`](./plugins/mstack/skills/han-review/SKILL.md) | CEO-level QA and design review to make Mintlify previews feel production-ready |
 | [`/agent-ready-docs`](./plugins/mstack/skills/agent-ready-docs/SKILL.md) | Optional post-parity pass to raise the [afdocs](https://afdocs.dev) and Mintlify Agent Rank score without regressing source parity |
@@ -103,7 +103,7 @@ Applies a high bar QA workflow for previews that must feel launch-ready: pixel-p
 
 ### `/create-landing-page`
 
-Builds a replica-first custom `index.mdx` landing page with all known Mintlify gotchas handled upfront: stripped semantic HTML, Tailwind-only styling, single-path SVG icons, and chrome-hiding CSS.
+Builds a website-first custom `index.mdx`: it finds the customer's canonical site, extracts its real visual system and validated assets, then proves the docs homepage is recognizable as that customer before running the standard Mintlify rendering and chrome checks.
 
 ### `/style-docs`
 

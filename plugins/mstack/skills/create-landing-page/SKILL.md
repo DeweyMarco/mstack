@@ -1,18 +1,31 @@
 ---
 name: create-landing-page
-description: Build custom Mintlify docs landing pages (index.mdx) with source-backed company assets, hero sections, navigation cards, quick-start steps, and responsive dark-mode support. Use when creating or redesigning a documentation landing page, index.mdx, custom Mintlify homepage, or branded docs home.
+description: Build custom Mintlify docs landing pages (index.mdx) by first inspecting the customer's real website for styles and approved media, then creating a docs-first extension of that brand rather than a generic template. Use when creating or redesigning a documentation landing page, index.mdx, custom Mintlify homepage, or branded docs home.
 ---
 
 # Create Landing Page
 
 Repeatable workflow for building custom Mintlify docs landing pages (`index.mdx`). For migrations, this is replica-first: match the source landing page's visible hierarchy, copy, CTAs, card structure, and brand assets before applying Mintlify polish.
 
+## Website-first brand gate (mandatory)
+
+The docs landing page must feel like a native product surface from the customer, not a generic Mintlify template with their logo attached. Complete this gate **before writing any landing-page JSX or choosing a visual direction**:
+
+1. **Find the canonical customer website.** If the user supplies only a docs URL, follow its logo/home link, metadata, or company name to identify the primary marketing/product site. Inspect both the real website and the existing docs homepage; the website is the visual source of truth when the docs source is sparse, stale, or purely functional.
+2. **Capture evidence, not impressions.** Render desktop and mobile screenshots, inspect light/dark behavior, and read the raw HTML plus linked CSS/JS bundles. Record the actual logo composition, fonts and weights, color tokens, page/background treatments, grid or texture, corner radii, button shapes, card density, navigation treatment, and media roles.
+3. **Inventory and validate real assets.** Locate the exact hero media, product UI, illustrations, videos, logos, and favicons used by the customer. Check HTTP status, `Content-Type`, file signature, dimensions, and native aspect ratio before accepting a download. A route fallback saved as `.svg` or `.png` is a broken asset, even when the filename looks correct.
+4. **Write a source-backed visual brief.** Before implementation, be able to state which website evidence drives the hero, chrome, card system, typography, backgrounds, imagery, and CTAs. If a visual decision has no source, supplied asset, or product-UX justification, remove it.
+5. **Build the docs journey in the customer's visual system.** Preserve docs IA and task-first UX, but carry over the website's recognizable design language. Do not copy a generic gradient hero, icon-card grid, rounded-pill system, or empty decorative tiles into every customer preview.
+6. **Prove the match before handoff.** Compare website, source docs, and local preview side-by-side at matching desktop/mobile widths and in every supported color mode. The first fold should be recognizable as that customer with the logo hidden. If it is not, the gate fails.
+
+If the site is client-rendered or protected, inspect its public static bundles, metadata, asset URLs, screenshots, and linked marketing pages. Do not treat a failed text fetch as permission to invent a brand.
+
 ## Before You Start
 
 1. Read the project's `docs.json` to understand navigation structure, brand colors, and existing page paths.
 2. Read the parity manifest when present so landing-page cards and CTAs point to source-backed page paths.
 3. Inventory the company's available assets before choosing the visual direction. When a source site, brand repository, or supplied asset folder exists, read [references/company-assets.md](references/company-assets.md) and map each useful asset to a landing-page role.
-4. If the user provided an original docs/homepage URL, inspect its rendered page plus raw HTML/CSS for visible colors, logo, favicon, hero/background media, top-level layout, section order, card counts, CTA labels, and footer/header structure before designing. Prefer those source-site assets and styles over stale or generic `docs.json` values.
+4. Inspect the customer website and original docs/homepage URL according to the mandatory website-first brand gate. Prefer current website assets and styles over stale docs styling or generic `docs.json` values.
 5. Confirm which docs pages already exist so all card/button `href` values point to real paths.
 6. Verify the `mint` CLI runs and the `data-docs-theme` in use. **mstack always uses `luma` and never `maple`** — set `"theme": "luma"` for greenfield `docs.json`, and convert any inherited or `mint init`-scaffolded `maple` site to `luma` before building the landing page (see Gotcha 2 → "Theme policy"). The other supported themes (`mint`, `palm`, `willow`, `aspen`, `linden`, `almond`, `sequoia`) are only for an explicit, specific customer request; `maple` is never an option.
 7. Decide whether `index` belongs in navigation based on the source chrome and discoverability requirements (see "docs.json Registration" below). Never add it to an existing sidebar group by default.
@@ -302,9 +315,9 @@ When `index` is included, give it a dedicated top-level page or Home tab. Do not
 
 Confirm `docs.json` has the required `theme`, `name`, `colors.primary`, and `navigation` fields. When company assets exist, configure source-verified `logo` and `favicon` paths; add `$schema` for editor validation when it is absent.
 
-## Greenfield Section Order
+## Greenfield Section Order (last resort only)
 
-Use this only when there is no source landing page to replicate. For migrations, preserve the source section order and omit sections the source does not have.
+Use this only when no customer docs homepage, marketing/product website, supplied brand system, or company repository exists. If any public customer site exists, mirror or extend its visual system instead—do not use this template. For migrations, preserve the source section order and omit sections the source does not have.
 
 1. **Hero** — value prop headline, subheading, primary + secondary CTA buttons, optional hero image
 2. **Quick Start** — `<Steps>` with 3–4 steps to first success; at least one code block; collapsible response in `<Accordion>`

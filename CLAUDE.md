@@ -59,7 +59,7 @@ For a migration from an existing docs site, run the skills in this order — eac
 1. `/docs-to-mintlify` — crawls the source, generates MDX + `docs.json`, and writes a parity manifest (the only skill that creates `docs.json`)
 2. `/fix-broken-links` — cleans up refs broken by slug normalization; re-run after any later step that moves pages
 3. `/style-docs` — polishes IA, chrome, components, collapsibility, and theming against the parity manifest; if it restructures navigation, loop back to `/fix-broken-links`
-4. `/create-landing-page` — builds the replica-first `index.mdx` after navigation, brand tokens, and page paths are stable
+4. `/create-landing-page` — completes mandatory customer-website discovery, extracts validated brand assets and visual evidence, then builds a docs-first `index.mdx` native to that customer
 5. `/fix-broken-links` — runs again after landing-page cards, header links, and footer links are added
 6. `/preview-qa` — mechanical parity gate (chrome, icons, collapsibility, backgrounds, structural parity, visual verification); re-run from gate 1 after any fix
 7. `/han-review` — final human-quality QA gate; only invoke after `/preview-qa` reports all gates PASS

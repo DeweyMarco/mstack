@@ -39,6 +39,9 @@ Apply automatically when the request includes terms like:
 - No placeholder copy in navigation, search, cards, buttons, or CTAs.
 - Typography, spacing, alignment, and icon sizing must be visually consistent.
 - Homepage sections should mirror the customer's hierarchy and scannability.
+- **Customer recognition test:** inspect the canonical marketing/product website, not only the old docs. With the logo hidden, the homepage's typography, colors, backgrounds, button/card language, imagery, and density must still be recognizable as that customer. A polished generic template fails this test.
+- **Real media and safe crops:** use validated customer assets when available. Reject image URLs that return HTML or the wrong MIME type, preserve native aspect ratios for UI and media containing words, and fail any crop that clips labels, controls, faces, or focal content.
+- **No empty showcase cards:** large card media areas must contain source-backed product proof or a task-specific product UI treatment. A tiny generic icon floating in a mostly empty patterned panel is unfinished when richer customer material exists.
 - Light and dark modes both look intentional (no broken contrast states).
 - **Chrome parity (parity migrations only):** verify global anchors, navbar links, footer socials/links, and primary CTA match the source — count and label each one against a fresh fetch of the live site. Template defaults (Blog anchor, Twitter/GitHub socials, "Get started" CTA from `mint init`) are the most common parity misses because they look normal at a glance.
 - **Per-section chrome parity:** chrome parity must be checked **per dropdown / per tab**, not only globally. Many source sites show different sidebar anchor buttons in each section (e.g. Framework pages show one anchor set, Templates pages show another). Fetch a page from each section and compare anchor lists individually. If they differ on the source, they must differ on the preview — use per-dropdown `anchors` arrays in `docs.json`, not `navigation.global.anchors`.
@@ -68,7 +71,8 @@ Only add custom CSS when required to match customer branding or layout. Keep it 
 
 1. **Baseline alignment**
    - Fetch the live source URL for any page being reviewed for parity. Do not work from the user's prose alone.
-   - Compare preview with the customer's current docs/site.
+   - Find and inspect the customer's canonical marketing/product website even when only a docs URL was supplied.
+   - Compare the homepage against both the customer's current docs and the real website; use the website as visual truth when the docs are sparse or stale.
    - Preserve familiar IA labels and nav grouping (Home, Guides, APIs, Reference, Learn, etc.).
    - Diff body-level structure: column counts, card counts, presence and label of every CTA, section order. Treat any mismatch as a defect to fix, not a follow-up to defer.
 
@@ -95,6 +99,7 @@ Only add custom CSS when required to match customer branding or layout. Keep it 
 
 6. **Final acceptance pass**
    - Confirm the page feels launch-ready, not demo-ready.
+   - Hide the logo and repeat the customer recognition test. If the design could be rebranded for another customer by swapping only logo and accent color, send it back to `/create-landing-page`.
    - If any section feels "template-ish", revise before finishing.
 
 ## Decision Rules
