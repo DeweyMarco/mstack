@@ -65,7 +65,8 @@ Load only the reference files needed for the current conversion:
 
 - Mirror the live site's navigation structure for all discovered in-scope pages.
 - Mirror nesting depth, not just membership: when a source sidebar entry has child pages beneath it (ReadMe parent pages with children, GitBook nested items), model it as a **nested group** whose first page is the parent page carrying `sidebarTitle: "Overview"` so its label doesn't duplicate the group name. Never flatten a parent's children into siblings — a flat list where the source shows an expandable sub-group is a nav-parity defect.
-- Use `tabs` or `products` according to the existing repo pattern — but never more than 4 top-level tabs. If the nav needs more than 4 top-level sections, use `navigation.products` (product switcher dropdown) instead of a longer tab row. See [references/docs-json.md](references/docs-json.md) → "Tab cap".
+- Deliberately choose among root-level `groups`, `tabs`, `products`, and `versions`. All are optional: use the surface that best matches the source IA and intended user journeys, and do not select one from section count alone.
+- Check whether tabs, a product switcher, or a version switcher would keep unrelated journeys out of the same sidebar, but keep root-level groups when a continuous sidebar is clearer. See [references/docs-json.md](references/docs-json.md) → "Navigation surface selection".
 - Use `groups` with `group` and `pages` arrays for sidebar sections.
 - For OpenAPI-backed sections, reference the spec with the `openapi` key instead of listing generated endpoints manually.
 - Ensure every converted site has the root-level `contextual` menu config.
@@ -93,6 +94,7 @@ Load only the reference files needed for the current conversion:
 - Every discovered page is marked `done`, `blocked`, or `excluded` with a concrete reason for non-`done` statuses.
 - A repo-local parity manifest exists and includes `source_url`, `normalized_path`, `converted_file`, `nav_section`, `status`, and `notes` for every discovered page.
 - Every created `.mdx` file appears in the `docs.json` navigation tree.
+- The chosen navigation surface is intentional and verified in preview; tabs, products, and versions are used only when they improve the source IA rather than to satisfy a fixed threshold.
 - `docs.json` includes root-level `contextual` config.
 - `docs.json` sets `seo.metatags.robots` to `noindex`.
 - If API docs exist, every OpenAPI spec is referenced from `docs.json` and paired with root-level `api` config, and no operation is exposed at two URL spaces (hand-migrated page + auto-generated playground page).

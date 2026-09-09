@@ -86,6 +86,7 @@ Before finishing:
 - Re-run link crawl on converted docs to ensure no orphaned in-scope source pages were skipped.
 - Every `.mdx` file created during conversion appears in the `docs.json` navigation tree.
 - There are no dangling references in `docs.json`.
+- The navigation surface has been reviewed intentionally: root groups, tabs, products, and versions were considered, and any switcher used improves the IA rather than satisfying a fixed count.
 - `docs.json` includes root-level `contextual` config.
 - If the site has API docs, every OpenAPI spec in `openapi/` is referenced from `docs.json` via `openapi`, root-level `api` config is present, and every `api-reference/*.mdx` file exists in navigation.
 

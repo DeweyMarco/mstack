@@ -647,14 +647,14 @@ Notes:
 - Format the value the same way the source site does (e.g. floor-to-thousands → `"63k"`, not `"63350"` or `"63.4k"`) so the docs match the source visually.
 - Do not write a `custom.js` to fetch the value at runtime — see *No arbitrary custom JavaScript in Mintlify* above.
 
-### Flattening `tabs` to sibling `groups`
+### Flattening inappropriate nested `tabs` to sibling `groups`
 
-Mintlify `tabs` always render as a visible toggle bar above the page content (the "User Guide / API docs" buttons, the "Payments / Connect / Issuing" buttons on Stripe, etc.). The buttons are intrinsic to the `tabs` shape — there is no setting that hides them. The decision is parity-driven in both directions:
+Mintlify `tabs` always render visible header navigation. At the navigation root they are optional, as are product and version switchers. Use the flatten pattern below when tabs were introduced as scaffolding or do not improve the intended navigation:
 
-- Source has a top-of-page tab toggle → use `tabs`. See *Restructuring a large, flat navigation* in `SKILL.md` for taxonomy and parity rules when adding tabs.
-- Source has no top-of-page tab toggle → use sibling `groups`. The flatten pattern below is the canonical fix.
+- Peer journeys that benefit from separate sidebars and persistent header access → consider `tabs`.
+- A continuous sidebar is clearer, or a nested toggle is unnecessary → use sibling `groups`.
 
-The flatten direction is the more common defect: while wrapping content under an anchor or dropdown to satisfy Mintlify's "one type of child per level" nesting rule, an agent picks `tabs` as the wrapping primitive and accidentally ships a toggle the source does not have. The fix is structural — replace `tabs` with `groups` and inline the inner-group wrappers.
+The nested flatten direction is a common defect: while wrapping content under an anchor or dropdown to satisfy Mintlify's "one type of child per level" nesting rule, an agent picks `tabs` as the wrapping primitive and accidentally ships an extra toggle. The fix is structural — replace those nested `tabs` with `groups` and inline the inner-group wrappers. For root navigation, make the same choice from the source and user journey rather than from section count.
 
 **Before — top-of-page tab toggle, source has no such toggle**
 
