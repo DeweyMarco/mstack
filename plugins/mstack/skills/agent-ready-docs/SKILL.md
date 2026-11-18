@@ -9,6 +9,8 @@ Get a site to **100/100 on agent-readiness scoring** — the checks at [afdocs.d
 
 This skill is stack-agnostic. The rules apply to docs sites, marketing pages, product sites, and anything else being scored. Every site's structure is different — treat the patterns here as **diagnostic categories**, not a checklist of literal files to fix. When implementation examples appear, they're illustrative; the user's stack might be Next.js, Astro, Hugo, Mintlify, plain HTML, or something else entirely.
 
+**On a Mintlify preview, never commit a root `llms.txt`, `llms-full.txt` or `skill.md`.** Mintlify generates all three from the full navigation, and a file in the repo replaces the generated one. Hand-written versions have shipped listing four or five pages out of hundreds and linking to `localhost:3000`, which is worse than having none and is the first thing a prospect checking agent-readiness finds. If one exists in a preview repo, delete it. Raise the score through page `description` frontmatter, navigation coverage and page size instead, and check that no `localhost` URL appears anywhere in the repo before finishing.
+
 For **Mintlify-hosted docs**, many route-level agent-readiness features are platform-owned. Do not add custom route handlers for `/llms.txt`, `/llms-full.txt`, `.md` URLs, `Accept: text/markdown`, `/.well-known/agent-skills/*`, or `/mcp` unless the site is headless/custom-front-end or reverse-proxied in a way that bypasses Mintlify.
 
 ## Position in the mstack migration workflow

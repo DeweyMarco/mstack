@@ -49,6 +49,8 @@ When company assets are available, build the page around them instead of reachin
 - Copy approved assets into the docs repo and use root-relative paths. Do not leave critical landing-page visuals hotlinked to the source website or a temporary CDN URL.
 - Match light/dark variants and intended crops. A correct file used against the wrong background or cropped around the wrong focal point is still a parity defect.
 - If the source has no suitable visual for a section, use restrained Mintlify-native layout and typography; do not invent a new brand language.
+- Never use a stock photo or a generic illustration, and never print statistics, quotes or customer names you could not verify on the company's own site. A stock photo in the hero is noticed at once ("not this generic photo of a woman holding a pen").
+- When the brief or the reviewer names a site to take the look from, take it from that site. A prompt reused from another preview can name the wrong company; if the named brand is not this customer's, stop and say so instead of styling one company's docs as another's.
 
 ### Pull source assets, do not fabricate them
 
@@ -388,7 +390,7 @@ When the source homepage leads with a prominent search bar or "popular question"
 - **Search bar:** a GET `<form>` on the current URL whose submit produces `?assistant=<the typed text>`.
 - **Popular-question chips:** plain `<a href="?assistant=How%20do%20I%20reset%20my%20password%3F">` pills — each deep-links a pre-encoded question straight into the assistant.
 
-This needs zero JS and no search route. Confirm the AI assistant is enabled for the project first (it depends on the site's AI features being on).
+This needs zero JS and no search route. **Only build this when the AI assistant is confirmed on for the deployment.** On a sales preview it is not: the assistant is switched on separately in the dashboard, and until then an "Ask AI" button or assistant search box just reloads the page. Leave them off a preview's landing page, and use plain cards and the standard search instead.
 
 #### Adaptive hero & CTA backgrounds (required for any tinted/dark section)
 
