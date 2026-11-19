@@ -42,6 +42,17 @@ For each broken link:
    - **External link**: Verify if link should be internal or update/remove it
 3. **Apply the fix** using the appropriate edit tool
 
+### Migrated sites: links to paths the source renamed
+
+On a site migrated from another docs platform, the usual leftover is a batch of links to paths the source has since renamed, so no migrated page sits at that path. Do not leave them and do not fix them one by one:
+
+1. Collect the broken targets from the `mint broken-links` report.
+2. For each one, request the same path on the source site and follow its redirect to the current URL.
+3. Point the link at the page migrated from that URL, and add the old path to `redirects` in `docs.json`.
+4. When the source no longer serves the path either, keep the link's text and drop the link.
+
+Do the same for links that still carry the source site's hostname but have a migrated page.
+
 ### Step 4: Verify
 
 Run `mint broken-links` again.
